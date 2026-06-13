@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { captureVideoFrame } from "@/lib/skinlog/photo";
 
+type FacingMode = "environment" | "user";
+
 type CameraViewProps = {
   prompt?: string;
   stepLabel?: string;
@@ -18,9 +20,11 @@ export function CameraView({
 }: CameraViewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const [facingMode, setFacingMode] = useState<FacingMode>("environment");
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [capturing, setCapturing] = useState(false);
+  const [switching, setSwitching] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -31,10 +35,15 @@ export function CameraView({
         return;
       }
 
+      setReady(false);
+      setSwitching(true);
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
-            facingMode: { ideal: "environment" },
+            facingMode: { ideal: facingMode },
             width: { ideal: 1280 },
             height: { ideal: 960 },
           },
@@ -52,11 +61,14 @@ export function CameraView({
           video.srcObject = stream;
           await video.play();
           setReady(true);
+          setError(null);
         }
       } catch {
         setError(
           "Could not access the camera. Allow permission and use HTTPS or localhost.",
         );
+      } finally {
+        if (!cancelled) setSwitching(false);
       }
     }
 
@@ -67,7 +79,14 @@ export function CameraView({
       streamRef.current?.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     };
-  }, []);
+  }, [facingMode]);
+
+  function handleSwitchCamera() {
+    if (switching || capturing || disabled) return;
+    setFacingMode((current) =>
+      current === "environment" ? "user" : "environment",
+    );
+  }
 
   async function handleCapture() {
     const video = videoRef.current;
@@ -107,15 +126,49 @@ export function CameraView({
         {stepLabel ? (
           <span className="skinlog-camera__step">{stepLabel}</span>
         ) : null}
+        <button
+          type="button"
+          className="skinlog-camera__switch"
+          aria-label={
+            facingMode === "environment"
+              ? "Switch to front camera"
+              : "Switch to back camera"
+          }
+          disabled={!ready || disabled || capturing || switching}
+          onClick={handleSwitchCamera}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+            <path
+              d="M7 8h10l-1.5-2h-4L10 8z"
+              strokeWidth="1.75"
+              strokeLinejoin="round"
+            />
+            <rect
+              x="5"
+              y="8"
+              width="14"
+              height="10"
+              rx="2"
+              strokeWidth="1.75"
+            />
+            <path
+              d="M9 5 7 3M15 5l2-2"
+              strokeWidth="1.75"
+              strokeLinecap="round"
+            />
+          </svg>
+        </button>
         {prompt ? <p className="skinlog-camera__prompt">{prompt}</p> : null}
       </div>
-      <button
-        type="button"
-        className="skinlog-camera__shutter"
-        aria-label="Take photo"
-        disabled={!ready || disabled || capturing}
-        onClick={handleCapture}
-      />
+      <div className="skinlog-camera__controls">
+        <button
+          type="button"
+          className="skinlog-camera__shutter"
+          aria-label="Take photo"
+          disabled={!ready || disabled || capturing || switching}
+          onClick={handleCapture}
+        />
+      </div>
     </div>
   );
 }

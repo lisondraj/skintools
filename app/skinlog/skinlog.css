@@ -250,6 +250,35 @@
   font-weight: 500;
 }
 
+.skinlog-camera__switch {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--skinlog-text);
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+.skinlog-camera__switch svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
+.skinlog-camera__switch:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .skinlog-camera__empty {
   display: flex;
   flex-direction: column;
@@ -274,10 +303,16 @@
   flex: 1;
 }
 
+.skinlog-camera__controls {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+
 .skinlog-camera__shutter {
   width: 64px;
   height: 64px;
-  margin: 20px auto 0;
+  margin: 0;
   padding: 0;
   border: 3px solid var(--skinlog-text);
   border-radius: 50%;
