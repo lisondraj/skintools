@@ -1,6 +1,5 @@
+import { getOpenAiKey, getOpenAiModel } from "@/lib/skinlog/env";
 import type { AnalyzeResponse, ScanMode } from "@/lib/skinlog/types";
-
-const DEFAULT_MODEL = "gpt-4o-mini";
 
 type OpenAiLesionPayload = {
   lesions: Array<{
@@ -50,12 +49,14 @@ export async function analyzeSkinPhoto(
   photo: string,
   mode: ScanMode,
 ): Promise<AnalyzeResponse> {
-  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  const apiKey = getOpenAiKey();
   if (!apiKey) {
-    throw new Error("OpenAI API key is not configured on this server.");
+    throw new Error(
+      "OpenAI API key not found. On Vercel: Project → Settings → Environment Variables → add OPENAI_API_KEY for Production, then redeploy.",
+    );
   }
 
-  const model = process.env.OPENAI_VISION_MODEL?.trim() || DEFAULT_MODEL;
+  const model = getOpenAiModel();
 
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -106,6 +107,10 @@ export async function analyzeSkinPhoto(
     description: lesion.description,
     attributes: lesion.attributes,
   }));
+
+  if (lesions.length === 0) {
+    throw new Error("No areas were detected in this photo. Try again with better lighting.");
+  }
 
   return { lesions };
 }

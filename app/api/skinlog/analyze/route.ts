@@ -1,8 +1,17 @@
+import { isOpenAiConfigured, getOpenAiModel } from "@/lib/skinlog/env";
 import { analyzeSkinPhoto } from "@/lib/skinlog/openai-analyze";
 import type { AnalyzeRequest } from "@/lib/skinlog/types";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+export async function GET() {
+  return NextResponse.json({
+    configured: isOpenAiConfigured(),
+    model: isOpenAiConfigured() ? getOpenAiModel() : null,
+  });
+}
 
 export async function POST(request: Request) {
   try {
