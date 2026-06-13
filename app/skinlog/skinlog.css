@@ -1,0 +1,405 @@
+.skinlog {
+  --skinlog-bg: #ffffff;
+  --skinlog-text: #111111;
+  --skinlog-muted: rgba(0, 0, 0, 0.55);
+  --skinlog-border: rgba(0, 0, 0, 0.08);
+  --skinlog-accent: #111111;
+  --skinlog-radius: 12px;
+  --skinlog-pad-x: 20px;
+  --skinlog-max: 480px;
+
+  min-height: 100dvh;
+  background: var(--skinlog-bg);
+  color: var(--skinlog-text);
+  font-family: var(--font-inter), system-ui, sans-serif;
+}
+
+.skinlog__inner {
+  width: 100%;
+  max-width: var(--skinlog-max);
+  margin: 0 auto;
+  padding: 0 var(--skinlog-pad-x);
+}
+
+.skinlog__header {
+  padding: 20px 0 8px;
+}
+
+.skinlog__logo {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  color: var(--skinlog-text);
+}
+
+.skinlog__title {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin: 0 0 12px;
+}
+
+.skinlog__lead {
+  margin: 0 0 32px;
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--skinlog-muted);
+}
+
+.skinlog__section {
+  padding: 24px 0;
+}
+
+.skinlog__section-title {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--skinlog-muted);
+  margin: 0 0 16px;
+}
+
+.skinlog__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 16px 20px;
+  border: none;
+  border-radius: var(--skinlog-radius);
+  background: var(--skinlog-accent);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.skinlog__btn:hover {
+  opacity: 0.88;
+}
+
+.skinlog__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.skinlog__btn--secondary {
+  background: #ffffff;
+  color: var(--skinlog-text);
+  border: 1px solid var(--skinlog-border);
+}
+
+.skinlog__btn--ghost {
+  background: transparent;
+  color: var(--skinlog-muted);
+  border: none;
+  width: auto;
+  padding: 8px 0;
+  font-weight: 400;
+}
+
+.skinlog__link {
+  display: inline-block;
+  margin-top: 16px;
+  font-size: 15px;
+  color: var(--skinlog-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.skinlog__disclaimer {
+  margin: 16px 0 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.03);
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--skinlog-muted);
+}
+
+.skinlog__badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--skinlog-muted);
+}
+
+.skinlog__badge--ai {
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--skinlog-text);
+}
+
+.skinlog__error {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(180, 35, 24, 0.06);
+  color: #8f2018;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.skinlog__loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 48px 0;
+  color: var(--skinlog-muted);
+  font-size: 15px;
+}
+
+.skinlog__spinner {
+  width: 28px;
+  height: 28px;
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  border-top-color: var(--skinlog-text);
+  border-radius: 50%;
+  animation: skinlog-spin 0.7s linear infinite;
+}
+
+@keyframes skinlog-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Mode toggle */
+.skinlog-mode-toggle {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--skinlog-radius);
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.skinlog-mode-toggle__btn {
+  flex: 1;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--skinlog-muted);
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.skinlog-mode-toggle__btn.is-active {
+  background: #ffffff;
+  color: var(--skinlog-text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* Camera */
+.skinlog-camera {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border-radius: var(--skinlog-radius);
+  overflow: hidden;
+  background: #f4f4f4;
+}
+
+.skinlog-camera__video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.skinlog-camera__prompt {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  font-size: 14px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.skinlog-camera__step {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.skinlog-camera__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 100%;
+  padding: 24px;
+  text-align: center;
+  color: var(--skinlog-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.skinlog-camera__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.skinlog-camera__actions .skinlog__btn {
+  flex: 1;
+}
+
+.skinlog-camera__shutter {
+  width: 64px;
+  height: 64px;
+  margin: 20px auto 0;
+  padding: 0;
+  border: 3px solid var(--skinlog-text);
+  border-radius: 50%;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.skinlog-camera__shutter::after {
+  content: "";
+  display: block;
+  width: 48px;
+  height: 48px;
+  margin: 5px auto;
+  border-radius: 50%;
+  background: var(--skinlog-text);
+}
+
+.skinlog-camera__shutter:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Lesion block */
+.skinlog-lesion {
+  display: flex;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--skinlog-border);
+  border-radius: var(--skinlog-radius);
+  margin-bottom: 12px;
+}
+
+.skinlog-lesion__thumb {
+  flex-shrink: 0;
+  width: 72px;
+  height: 72px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: #f0f0f0;
+}
+
+.skinlog-lesion__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.skinlog-lesion__location {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.skinlog-lesion__desc {
+  margin: 0 0 8px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--skinlog-muted);
+}
+
+.skinlog-lesion__attrs {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--skinlog-muted);
+}
+
+.skinlog-lesion__attrs li + li {
+  margin-top: 2px;
+}
+
+/* History */
+.skinlog-history-date {
+  margin: 0 0 12px;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--skinlog-muted);
+}
+
+.skinlog-history-entry {
+  margin-bottom: 24px;
+}
+
+.skinlog-history-entry__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.skinlog-history-entry__mode {
+  font-size: 13px;
+  color: var(--skinlog-muted);
+}
+
+.skinlog-history-entry__delete {
+  padding: 6px 10px;
+  border: 1px solid var(--skinlog-border);
+  border-radius: 8px;
+  background: #ffffff;
+  font-family: inherit;
+  font-size: 13px;
+  color: #8f2018;
+  cursor: pointer;
+}
+
+.skinlog-history-empty {
+  padding: 48px 0;
+  text-align: center;
+  color: var(--skinlog-muted);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.skinlog-review-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 24px;
+  padding-bottom: 32px;
+}
