@@ -18,6 +18,10 @@ export type Lesion = {
   bodyLocation?: string;
   description: string;
   attributes: LesionAttributes;
+  /** Approximate horizontal center of this finding, 0–1 fraction of image width */
+  anchorX?: number;
+  /** Approximate vertical center of this finding, 0–1 fraction of image height */
+  anchorY?: number;
 };
 
 export type StoredLesion = Lesion & {

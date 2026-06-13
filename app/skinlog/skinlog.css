@@ -444,6 +444,95 @@ html:has(.skinlog-capture-screen) body {
   cursor: not-allowed;
 }
 
+/* Annotated photo */
+.skinlog-annotated {
+  position: relative;
+  width: calc(100% + (var(--skinlog-pad-x) * 2));
+  margin-left: calc(-1 * var(--skinlog-pad-x));
+  margin-right: calc(-1 * var(--skinlog-pad-x));
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: #111;
+}
+
+.skinlog-annotated__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.skinlog-annotated__pin {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.skinlog-annotated__pin-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #111111;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.18),
+    0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+/* Finding log boxes (single lesion review) */
+.skinlog-finding-list {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.skinlog-finding {
+  padding: 14px 16px;
+  border: 1px solid var(--skinlog-border);
+  border-radius: var(--skinlog-radius);
+}
+
+.skinlog-finding__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.skinlog-finding__number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--skinlog-text);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.skinlog-finding__location {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--skinlog-text);
+  line-height: 1.25;
+}
+
+.skinlog-finding__desc {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--skinlog-muted);
+}
+
 /* Lesion block */
 .skinlog-lesion {
   display: flex;

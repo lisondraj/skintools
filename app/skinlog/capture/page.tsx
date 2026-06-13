@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { AnnotatedPhoto } from "@/components/skinlog/AnnotatedPhoto";
 import { CameraView } from "@/components/skinlog/CameraView";
 import { LesionBlock } from "@/components/skinlog/LesionBlock";
 import { ModeToggle } from "@/components/skinlog/ModeToggle";
@@ -150,17 +151,39 @@ export default function SkinLogCapturePage() {
       </header>
 
       <main className="skinlog__section">
-        <h1 className="skinlog__title" style={{ fontSize: 22, marginBottom: 8 }}>
-          Review
-        </h1>
-        <p className="skinlog__lead" style={{ marginBottom: 20 }}>
-          {lesions.length} area{lesions.length === 1 ? "" : "s"} noted. Save to
-          add to your history.
-        </p>
+        {/* Single lesion: annotated photo + description-only log boxes */}
+        {mode === "single" && lesions.length > 0 ? (
+          <>
+            <AnnotatedPhoto photo={lesions[0].photo} lesions={lesions} />
 
-        {lesions.map((lesion) => (
-          <LesionBlock key={lesion.id} lesion={lesion} />
-        ))}
+            <div className="skinlog-finding-list">
+              {lesions.map((lesion, index) => (
+                <div key={lesion.id} className="skinlog-finding">
+                  <div className="skinlog-finding__header">
+                    <span className="skinlog-finding__number">{index + 1}</span>
+                    <span className="skinlog-finding__location">
+                      {lesion.bodyLocation ?? "Location unspecified"}
+                    </span>
+                  </div>
+                  <p className="skinlog-finding__desc">{lesion.description}</p>
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          /* Full body: existing LesionBlock with attributes */
+          <>
+            <h1 className="skinlog__title" style={{ fontSize: 22, marginBottom: 8 }}>
+              Review
+            </h1>
+            <p className="skinlog__lead" style={{ marginBottom: 20 }}>
+              {lesions.length} area{lesions.length === 1 ? "" : "s"} noted.
+            </p>
+            {lesions.map((lesion) => (
+              <LesionBlock key={lesion.id} lesion={lesion} />
+            ))}
+          </>
+        )}
 
         <p className="skinlog__disclaimer">
           For personal tracking only. Not a medical diagnosis.

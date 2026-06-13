@@ -5,6 +5,8 @@ type OpenAiFindingPayload = {
   lesions: Array<{
     bodyLocation?: string;
     description: string;
+    anchorX?: number;
+    anchorY?: number;
     attributes: {
       morphology: string;
       size: string;
@@ -32,6 +34,8 @@ Do NOT name or imply a diagnosis. Do NOT use disease names. Use descriptive morp
 For each finding, return:
 - bodyLocation: specific anatomical location (e.g. "left forearm, volar surface", "upper back, right of midline")
 - description: 2-3 sentence objective description of what is visible
+- anchorX: approximate horizontal center of this finding as a decimal fraction of the image width (0.0 = left edge, 1.0 = right edge)
+- anchorY: approximate vertical center of this finding as a decimal fraction of the image height (0.0 = top edge, 1.0 = bottom edge)
 - attributes:
   - morphology: primary lesion type(s) using standard dermatology terms (e.g. "erythematous papules", "hyperpigmented patch", "scaly plaque", "atrophic scar", "vesicles on an erythematous base")
   - size: estimated dimensions or extent (e.g. "~5 mm", "~3 × 2 cm", "diffuse, covering ~20% of the upper back")
@@ -45,6 +49,8 @@ Return JSON only with this exact shape:
     {
       "bodyLocation": "string",
       "description": "string",
+      "anchorX": 0.5,
+      "anchorY": 0.5,
       "attributes": {
         "morphology": "string",
         "size": "string",
@@ -117,6 +123,8 @@ export async function analyzeSkinPhoto(
     id: crypto.randomUUID(),
     bodyLocation: f.bodyLocation,
     description: f.description,
+    anchorX: typeof f.anchorX === "number" ? Math.min(1, Math.max(0, f.anchorX)) : undefined,
+    anchorY: typeof f.anchorY === "number" ? Math.min(1, Math.max(0, f.anchorY)) : undefined,
     attributes: {
       morphology: f.attributes.morphology,
       size: f.attributes.size,
