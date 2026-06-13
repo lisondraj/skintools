@@ -5,28 +5,46 @@ type LesionBlockProps = {
   compact?: boolean;
 };
 
+const ATTR_LABELS: Record<keyof StoredLesion["attributes"], string> = {
+  morphology: "Morphology",
+  size: "Size",
+  color: "Color",
+  distribution: "Distribution",
+  surface: "Surface",
+};
+
 export function LesionBlock({ lesion, compact = false }: LesionBlockProps) {
   return (
     <article className="skinlog-lesion">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={lesion.photo}
-        alt={lesion.bodyLocation ?? "Skin lesion"}
+        alt={lesion.bodyLocation ?? "Skin finding"}
         className="skinlog-lesion__thumb"
       />
       <div className="skinlog-lesion__body">
         <h3 className="skinlog-lesion__location">
-          {lesion.bodyLocation ?? "Unknown location"}
+          {lesion.bodyLocation ?? "Location unspecified"}
         </h3>
         {!compact ? (
           <p className="skinlog-lesion__desc">{lesion.description}</p>
         ) : null}
         <ul className="skinlog-lesion__attrs">
-          <li>Size: {lesion.attributes.size}</li>
-          <li>Color: {lesion.attributes.color}</li>
-          <li>Shape: {lesion.attributes.shape}</li>
-          <li>Border: {lesion.attributes.border}</li>
-          {!compact ? <li>Notes: {lesion.attributes.notes}</li> : null}
+          {(
+            Object.entries(lesion.attributes) as [
+              keyof typeof lesion.attributes,
+              string,
+            ][]
+          )
+            .filter(([key]) => !compact || key !== "surface")
+            .map(([key, val]) => (
+              <li key={key}>
+                <span className="skinlog-lesion__attr-label">
+                  {ATTR_LABELS[key]}:
+                </span>{" "}
+                {val}
+              </li>
+            ))}
         </ul>
       </div>
     </article>

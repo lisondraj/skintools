@@ -1,3 +1,15 @@
+/* Keep safe-area chrome (Dynamic Island, home bar) white on white pages */
+html:has(.skinlog),
+html:has(.skinlog) body {
+  background-color: #ffffff;
+}
+
+/* Turn chrome black when camera overlay is active */
+html:has(.skinlog-capture-screen),
+html:has(.skinlog-capture-screen) body {
+  background-color: #000000;
+}
+
 .skinlog {
   --skinlog-bg: #ffffff;
   --skinlog-text: #111111;
@@ -481,6 +493,11 @@
 
 .skinlog-lesion__attrs li + li {
   margin-top: 2px;
+}
+
+.skinlog-lesion__attr-label {
+  font-weight: 500;
+  color: var(--skinlog-text);
 }
 
 /* History */

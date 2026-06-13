@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CameraView } from "@/components/skinlog/CameraView";
 import { LesionBlock } from "@/components/skinlog/LesionBlock";
 import { ModeToggle } from "@/components/skinlog/ModeToggle";
@@ -31,6 +31,22 @@ export default function SkinLogCapturePage() {
 
   const isFullBody = mode === "full-body";
   const fullBodyStep = FULL_BODY_STEPS[stepIndex];
+
+  // Flip theme-color (Dynamic Island / status bar chrome) black for camera, white for white pages
+  useEffect(() => {
+    const isCamera = phase === "capture" || phase === "analyzing";
+    const color = isCamera ? "#000000" : "#ffffff";
+    let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.name = "theme-color";
+      document.head.appendChild(meta);
+    }
+    meta.content = color;
+    return () => {
+      meta!.content = "#ffffff";
+    };
+  }, [phase]);
 
   async function handleCapture(photo: string) {
     setPhase("analyzing");
