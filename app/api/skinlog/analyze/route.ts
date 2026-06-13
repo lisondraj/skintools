@@ -1,15 +1,8 @@
-import {
-  analyzeSkinPhoto,
-  getAnalyzeStatus,
-} from "@/lib/skinlog/openai-analyze";
+import { analyzeSkinPhoto } from "@/lib/skinlog/openai-analyze";
 import type { AnalyzeRequest } from "@/lib/skinlog/types";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
-
-export async function GET() {
-  return NextResponse.json(getAnalyzeStatus());
-}
 
 export async function POST(request: Request) {
   try {

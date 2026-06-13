@@ -62,8 +62,6 @@ export default function SkinLogHistoryPage() {
                   <div className="skinlog-history-entry__meta">
                     <span className="skinlog-history-entry__mode">
                       {entry.mode === "single" ? "Single lesion" : "Full body"}
-                      {" · "}
-                      {entry.source === "openai" ? "AI" : "Sample"}
                     </span>
                     <button
                       type="button"

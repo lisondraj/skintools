@@ -1,4 +1,3 @@
-import { mockLesionsFromCapture } from "@/lib/skinlog/mock-lesions";
 import type { AnalyzeResponse, ScanMode } from "@/lib/skinlog/types";
 
 const DEFAULT_MODEL = "gpt-4o-mini";
@@ -17,13 +16,7 @@ type OpenAiLesionPayload = {
   }>;
 };
 
-function shouldUseMock() {
-  return (
-    process.env.SKINLOG_AI_MOCK === "true" || !process.env.OPENAI_API_KEY?.trim()
-  );
-}
-
-function buildPrompt(mode: ScanMode) {
+function buildPrompt(mode: ScanMode): string {
   const scope =
     mode === "single"
       ? "Focus on the primary visible lesion in this photo."
@@ -57,11 +50,11 @@ export async function analyzeSkinPhoto(
   photo: string,
   mode: ScanMode,
 ): Promise<AnalyzeResponse> {
-  if (shouldUseMock()) {
-    return { lesions: mockLesionsFromCapture(mode), source: "mock" };
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  if (!apiKey) {
+    throw new Error("OpenAI API key is not configured on this server.");
   }
 
-  const apiKey = process.env.OPENAI_API_KEY!.trim();
   const model = process.env.OPENAI_VISION_MODEL?.trim() || DEFAULT_MODEL;
 
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -114,19 +107,5 @@ export async function analyzeSkinPhoto(
     attributes: lesion.attributes,
   }));
 
-  return {
-    lesions: lesions.length > 0 ? lesions : mockLesionsFromCapture(mode),
-    source: "openai",
-  };
-}
-
-export function getAnalyzeStatus() {
-  const mockMode = shouldUseMock();
-  return {
-    configured: !mockMode,
-    mockMode,
-    model: mockMode
-      ? null
-      : process.env.OPENAI_VISION_MODEL?.trim() || DEFAULT_MODEL,
-  };
+  return { lesions };
 }

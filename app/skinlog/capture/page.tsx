@@ -27,7 +27,6 @@ export default function SkinLogCapturePage() {
   const [phase, setPhase] = useState<Phase>("capture");
   const [stepIndex, setStepIndex] = useState(0);
   const [lesions, setLesions] = useState<StoredLesion[]>([]);
-  const [source, setSource] = useState<"openai" | "mock">("mock");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -40,9 +39,8 @@ export default function SkinLogCapturePage() {
 
     try {
       const result = await generateLesionsFromCapture(photo, mode);
-      setSource((prev) => (prev === "openai" ? "openai" : result.source));
 
-      const stored = result.lesions.map((lesion) => ({
+      const stored: StoredLesion[] = result.lesions.map((lesion) => ({
         ...lesion,
         id: crypto.randomUUID(),
         photo,
@@ -51,7 +49,7 @@ export default function SkinLogCapturePage() {
       if (isFullBody) {
         setLesions((prev) => [...prev, ...stored]);
         if (stepIndex < FULL_BODY_STEPS.length - 1) {
-          setStepIndex((index) => index + 1);
+          setStepIndex((i) => i + 1);
           setPhase("capture");
           return;
         }
@@ -69,7 +67,6 @@ export default function SkinLogCapturePage() {
   function handleRetake() {
     setLesions([]);
     setStepIndex(0);
-    setSource("mock");
     setError(null);
     setPhase("capture");
   }
@@ -82,16 +79,15 @@ export default function SkinLogCapturePage() {
     setError(null);
   }
 
-  async function handleSave() {
+  function handleSave() {
     if (lesions.length === 0) return;
-
     setSaving(true);
+
     const entry: ScanEntry = {
       id: crypto.randomUUID(),
       mode,
       date: formatDateKey(),
       createdAt: Date.now(),
-      source,
       lesions,
     };
 
@@ -149,28 +145,12 @@ export default function SkinLogCapturePage() {
 
         {phase === "review" ? (
           <>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: 16,
-              }}
-            >
-              <h1 className="skinlog__title" style={{ fontSize: 22, margin: 0 }}>
-                Review
-              </h1>
-              <span
-                className={`skinlog__badge${
-                  source === "openai" ? " skinlog__badge--ai" : ""
-                }`}
-              >
-                {source === "openai" ? "AI" : "Sample"}
-              </span>
-            </div>
+            <h1 className="skinlog__title" style={{ fontSize: 22, marginBottom: 8 }}>
+              Review
+            </h1>
 
             <p className="skinlog__lead" style={{ marginBottom: 20 }}>
-              {lesions.length} lesion{lesions.length === 1 ? "" : "s"} found.
+              {lesions.length} area{lesions.length === 1 ? "" : "s"} noted.
               Save to add to your history.
             </p>
 

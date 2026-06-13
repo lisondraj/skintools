@@ -24,7 +24,6 @@ export type ScanEntry = {
   mode: ScanMode;
   date: string;
   createdAt: number;
-  source: "openai" | "mock";
   lesions: StoredLesion[];
 };
 
@@ -35,11 +34,4 @@ export type AnalyzeRequest = {
 
 export type AnalyzeResponse = {
   lesions: Lesion[];
-  source: "openai" | "mock";
-};
-
-export type AnalyzeStatusResponse = {
-  configured: boolean;
-  mockMode: boolean;
-  model: string | null;
 };

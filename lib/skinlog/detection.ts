@@ -2,7 +2,7 @@ import type { AnalyzeResponse, ScanMode } from "@/lib/skinlog/types";
 
 /**
  * Client-side entry point for lesion analysis.
- * Calls your Next.js API route — never put OPENAI_API_KEY in the browser.
+ * Calls the Next.js API route — the OpenAI key never reaches the browser.
  */
 export async function generateLesionsFromCapture(
   photo: string,
@@ -22,12 +22,4 @@ export async function generateLesionsFromCapture(
   }
 
   return response.json() as Promise<AnalyzeResponse>;
-}
-
-export async function getAnalyzeStatus() {
-  const response = await fetch("/api/skinlog/analyze");
-  if (!response.ok) {
-    throw new Error("Could not read AI configuration status.");
-  }
-  return response.json();
 }
