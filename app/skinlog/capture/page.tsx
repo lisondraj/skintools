@@ -11,12 +11,12 @@ import { formatDateKey, saveEntry } from "@/lib/skinlog/storage";
 import type { ScanEntry, ScanMode, StoredLesion } from "@/lib/skinlog/types";
 
 const FULL_BODY_STEPS = [
-  { id: "front", label: "Step 1 of 6", prompt: "Front torso — arms slightly out" },
-  { id: "back", label: "Step 2 of 6", prompt: "Back — turn around, arms out" },
-  { id: "left-arm", label: "Step 3 of 6", prompt: "Left arm — palm up, full length" },
-  { id: "right-arm", label: "Step 4 of 6", prompt: "Right arm — palm up, full length" },
-  { id: "legs", label: "Step 5 of 6", prompt: "Legs — front view, feet visible" },
-  { id: "head-neck", label: "Step 6 of 6", prompt: "Head and neck — face forward" },
+  { id: "front",     label: "1 / 6", prompt: "Front torso — arms slightly out" },
+  { id: "back",      label: "2 / 6", prompt: "Back — turn around, arms out" },
+  { id: "left-arm",  label: "3 / 6", prompt: "Left arm — palm up, full length" },
+  { id: "right-arm", label: "4 / 6", prompt: "Right arm — palm up, full length" },
+  { id: "legs",      label: "5 / 6", prompt: "Legs — front view, feet visible" },
+  { id: "head-neck", label: "6 / 6", prompt: "Head and neck — face forward" },
 ] as const;
 
 type Phase = "capture" | "analyzing" | "review";
@@ -27,21 +27,18 @@ export default function SkinLogCapturePage() {
   const [phase, setPhase] = useState<Phase>("capture");
   const [stepIndex, setStepIndex] = useState(0);
   const [lesions, setLesions] = useState<StoredLesion[]>([]);
-  const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const fullBodyStep = FULL_BODY_STEPS[stepIndex];
   const isFullBody = mode === "full-body";
+  const fullBodyStep = FULL_BODY_STEPS[stepIndex];
 
   async function handleCapture(photo: string) {
     setPhase("analyzing");
-    setError(null);
 
     try {
       const result = await generateLesionsFromCapture(photo, mode);
-
-      const stored: StoredLesion[] = result.lesions.map((lesion) => ({
-        ...lesion,
+      const stored: StoredLesion[] = result.lesions.map((l) => ({
+        ...l,
         id: crypto.randomUUID(),
         photo,
       }));
@@ -59,30 +56,30 @@ export default function SkinLogCapturePage() {
 
       setPhase("review");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Analysis failed.");
+      // Error is shown inside CameraView via its own state;
+      // return to capture so the user can retry.
       setPhase("capture");
+      // Re-throw so CameraView surface shows the message.
+      throw err;
     }
   }
 
   function handleRetake() {
     setLesions([]);
     setStepIndex(0);
-    setError(null);
     setPhase("capture");
   }
 
-  function handleModeChange(nextMode: ScanMode) {
+  function handleModeChange(next: ScanMode) {
     if (phase !== "capture") return;
-    setMode(nextMode);
+    setMode(next);
     setStepIndex(0);
     setLesions([]);
-    setError(null);
   }
 
   function handleSave() {
     if (lesions.length === 0) return;
     setSaving(true);
-
     const entry: ScanEntry = {
       id: crypto.randomUUID(),
       mode,
@@ -90,11 +87,44 @@ export default function SkinLogCapturePage() {
       createdAt: Date.now(),
       lesions,
     };
-
     saveEntry(entry);
     router.push("/skinlog/history");
   }
 
+  /* ── Capture + Analyzing: full-screen fixed overlay ── */
+  if (phase === "capture" || phase === "analyzing") {
+    return (
+      <div className="skinlog-capture-screen">
+        {/* Logo floats above the camera */}
+        <div className="skinlog-capture-screen__header">
+          <Link href="/skinlog" className="skinlog-capture-screen__logo">
+            SkinLog
+          </Link>
+        </div>
+
+        {phase === "analyzing" ? (
+          <div className="skinlog-capture-screen__analyzing">
+            <div className="skinlog__spinner" aria-hidden />
+            <p>Analyzing photo…</p>
+          </div>
+        ) : (
+          <CameraView
+            prompt={isFullBody ? fullBodyStep.prompt : undefined}
+            stepLabel={isFullBody ? fullBodyStep.label : undefined}
+            onCapture={handleCapture}
+          >
+            <ModeToggle
+              value={mode}
+              onChange={handleModeChange}
+              disabled={stepIndex > 0}
+            />
+          </CameraView>
+        )}
+      </div>
+    );
+  }
+
+  /* ── Review: normal scrollable layout ── */
   return (
     <div className="skinlog__inner">
       <header className="skinlog__header">
@@ -104,84 +134,40 @@ export default function SkinLogCapturePage() {
       </header>
 
       <main className="skinlog__section">
-        {phase === "capture" ? (
-          <>
-            <h1 className="skinlog__title" style={{ fontSize: 22, marginBottom: 16 }}>
-              {isFullBody ? "Full body scan" : "Single lesion"}
-            </h1>
+        <h1 className="skinlog__title" style={{ fontSize: 22, marginBottom: 8 }}>
+          Review
+        </h1>
+        <p className="skinlog__lead" style={{ marginBottom: 20 }}>
+          {lesions.length} area{lesions.length === 1 ? "" : "s"} noted. Save to
+          add to your history.
+        </p>
 
-            <div style={{ marginBottom: 20 }}>
-              <ModeToggle
-                value={mode}
-                onChange={handleModeChange}
-                disabled={stepIndex > 0}
-              />
-            </div>
+        {lesions.map((lesion) => (
+          <LesionBlock key={lesion.id} lesion={lesion} />
+        ))}
 
-            <CameraView
-              prompt={isFullBody ? fullBodyStep.prompt : "Center the lesion in frame"}
-              stepLabel={isFullBody ? fullBodyStep.label : undefined}
-              onCapture={handleCapture}
-            />
+        <p className="skinlog__disclaimer">
+          For personal tracking only. Not a medical diagnosis.
+        </p>
 
-            {error ? (
-              <div className="skinlog__error" style={{ marginTop: 16 }}>
-                {error}
-              </div>
-            ) : null}
-
-            <p className="skinlog__disclaimer">
-              For personal tracking only. Not a medical diagnosis.
-            </p>
-          </>
-        ) : null}
-
-        {phase === "analyzing" ? (
-          <div className="skinlog__loading">
-            <div className="skinlog__spinner" aria-hidden />
-            <p>Analyzing photo…</p>
-          </div>
-        ) : null}
-
-        {phase === "review" ? (
-          <>
-            <h1 className="skinlog__title" style={{ fontSize: 22, marginBottom: 8 }}>
-              Review
-            </h1>
-
-            <p className="skinlog__lead" style={{ marginBottom: 20 }}>
-              {lesions.length} area{lesions.length === 1 ? "" : "s"} noted.
-              Save to add to your history.
-            </p>
-
-            {lesions.map((lesion) => (
-              <LesionBlock key={lesion.id} lesion={lesion} />
-            ))}
-
-            <p className="skinlog__disclaimer">
-              For personal tracking only. Not a medical diagnosis.
-            </p>
-
-            <div className="skinlog-review-actions">
-              <button
-                type="button"
-                className="skinlog__btn"
-                disabled={saving}
-                onClick={handleSave}
-              >
-                Save to history
-              </button>
-              <button
-                type="button"
-                className="skinlog__btn skinlog__btn--secondary"
-                disabled={saving}
-                onClick={handleRetake}
-              >
-                Retake
-              </button>
-            </div>
-          </>
-        ) : null}
+        <div className="skinlog-review-actions">
+          <button
+            type="button"
+            className="skinlog__btn"
+            disabled={saving}
+            onClick={handleSave}
+          >
+            Save to history
+          </button>
+          <button
+            type="button"
+            className="skinlog__btn skinlog__btn--secondary"
+            disabled={saving}
+            onClick={handleRetake}
+          >
+            Retake
+          </button>
+        </div>
       </main>
     </div>
   );

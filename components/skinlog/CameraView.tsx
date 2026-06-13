@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { captureVideoFrame } from "@/lib/skinlog/photo";
 
 type FacingMode = "environment" | "user";
@@ -10,6 +10,8 @@ type CameraViewProps = {
   stepLabel?: string;
   onCapture: (photo: string) => void;
   disabled?: boolean;
+  /** Rendered inside the bottom overlay — use for mode toggle etc. */
+  children?: ReactNode;
 };
 
 export function CameraView({
@@ -17,6 +19,7 @@ export function CameraView({
   stepLabel,
   onCapture,
   disabled = false,
+  children,
 }: CameraViewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -37,7 +40,7 @@ export function CameraView({
 
       setReady(false);
       setSwitching(true);
-      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
 
       try {
@@ -51,7 +54,7 @@ export function CameraView({
         });
 
         if (cancelled) {
-          stream.getTracks().forEach((track) => track.stop());
+          stream.getTracks().forEach((t) => t.stop());
           return;
         }
 
@@ -65,7 +68,7 @@ export function CameraView({
         }
       } catch {
         setError(
-          "Could not access the camera. Allow permission and use HTTPS or localhost.",
+          "Camera unavailable. Grant permission and open via HTTPS or localhost.",
         );
       } finally {
         if (!cancelled) setSwitching(false);
@@ -76,22 +79,19 @@ export function CameraView({
 
     return () => {
       cancelled = true;
-      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     };
   }, [facingMode]);
 
-  function handleSwitchCamera() {
+  function handleSwitch() {
     if (switching || capturing || disabled) return;
-    setFacingMode((current) =>
-      current === "environment" ? "user" : "environment",
-    );
+    setFacingMode((c) => (c === "environment" ? "user" : "environment"));
   }
 
   async function handleCapture() {
     const video = videoRef.current;
-    if (!video || !ready || disabled || capturing) return;
-
+    if (!video || !ready || disabled || capturing || switching) return;
     setCapturing(true);
     try {
       const photo = await captureVideoFrame(video);
@@ -103,71 +103,75 @@ export function CameraView({
     }
   }
 
-  if (error) {
-    return (
-      <div className="skinlog-camera">
-        <div className="skinlog-camera__empty">
+  return (
+    <div className="skinlog-camera">
+      <video
+        ref={videoRef}
+        className="skinlog-camera__video"
+        playsInline
+        muted
+        autoPlay
+      />
+
+      {/* Step counter — top right */}
+      {stepLabel ? (
+        <span className="skinlog-camera__step">{stepLabel}</span>
+      ) : null}
+
+      {/* Error — shown inside camera above controls */}
+      {error ? (
+        <div className="skinlog-camera__error-overlay">
           <p>{error}</p>
         </div>
-      </div>
-    );
-  }
+      ) : null}
 
-  return (
-    <div>
-      <div className="skinlog-camera">
-        <video
-          ref={videoRef}
-          className="skinlog-camera__video"
-          playsInline
-          muted
-          autoPlay
-        />
-        {stepLabel ? (
-          <span className="skinlog-camera__step">{stepLabel}</span>
+      {/* Bottom overlay: mode toggle → prompt → shutter row */}
+      <div className="skinlog-camera__bottom">
+        {children ? (
+          <div className="skinlog-camera__controls-slot">{children}</div>
         ) : null}
-        <button
-          type="button"
-          className="skinlog-camera__switch"
-          aria-label={
-            facingMode === "environment"
-              ? "Switch to front camera"
-              : "Switch to back camera"
-          }
-          disabled={!ready || disabled || capturing || switching}
-          onClick={handleSwitchCamera}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
-            <path
-              d="M7 8h10l-1.5-2h-4L10 8z"
-              strokeWidth="1.75"
-              strokeLinejoin="round"
-            />
-            <rect
-              x="5"
-              y="8"
-              width="14"
-              height="10"
-              rx="2"
-              strokeWidth="1.75"
-            />
-            <path
-              d="M9 5 7 3M15 5l2-2"
-              strokeWidth="1.75"
-              strokeLinecap="round"
-            />
-          </svg>
-        </button>
+
         {prompt ? <p className="skinlog-camera__prompt">{prompt}</p> : null}
-      </div>
-      <div className="skinlog-camera__controls">
-        <button
-          type="button"
-          className="skinlog-camera__shutter"
-          aria-label="Take photo"
-          disabled={!ready || disabled || capturing || switching}
-          onClick={handleCapture}
-        />
+
+        <div className="skinlog-camera__shutter-row">
+          {/* left spacer keeps shutter centred */}
+          <div className="skinlog-camera__shutter-spacer" />
+
+          <button
+            type="button"
+            className="skinlog-camera__shutter"
+            aria-label="Take photo"
+            disabled={!ready || disabled || capturing || switching}
+            onClick={handleCapture}
+          />
+
+          <button
+            type="button"
+            className="skinlog-camera__switch"
+            aria-label={
+              facingMode === "environment"
+                ? "Switch to front camera"
+                : "Switch to back camera"
+            }
+            disabled={!ready || disabled || capturing || switching}
+            onClick={handleSwitch}
+          >
+            {/* Flip / refresh icon */}
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <polyline points="1 4 1 10 7 10" />
+              <polyline points="23 20 23 14 17 14" />
+              <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 0 1 3.51 15" />
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
   );

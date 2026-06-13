@@ -208,130 +208,227 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
-/* Camera */
+/* Full-screen capture overlay */
+.skinlog-capture-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: #000000;
+  display: flex;
+  flex-direction: column;
+}
+
+.skinlog-capture-screen__header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  padding: max(env(safe-area-inset-top, 0px), 16px) 20px 0;
+  pointer-events: none;
+}
+
+.skinlog-capture-screen__logo {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 15px;
+  font-weight: 400;
+  color: #ffffff;
+  text-decoration: none;
+  pointer-events: auto;
+  display: inline-block;
+  padding: 4px 0;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+.skinlog-capture-screen__analyzing {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 15px;
+}
+
+.skinlog-capture-screen__analyzing .skinlog__spinner {
+  border-color: rgba(255, 255, 255, 0.2);
+  border-top-color: #ffffff;
+  width: 36px;
+  height: 36px;
+}
+
+/* Camera — fills the fixed parent */
 .skinlog-camera {
   position: relative;
+  flex: 1;
   width: 100%;
-  aspect-ratio: 3 / 4;
-  border-radius: var(--skinlog-radius);
   overflow: hidden;
-  background: #f4f4f4;
+  background: #111111;
 }
 
 .skinlog-camera__video {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 
-.skinlog-camera__prompt {
-  position: absolute;
-  left: 16px;
-  right: 16px;
-  bottom: 16px;
-  padding: 12px 14px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.92);
-  font-size: 14px;
-  line-height: 1.4;
-  text-align: center;
-}
-
+/* Step counter — top right, below safe area */
 .skinlog-camera__step {
   position: absolute;
-  top: 12px;
-  right: 12px;
-  padding: 6px 10px;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.55);
+  top: max(env(safe-area-inset-top, 0px), 16px);
+  top: calc(max(env(safe-area-inset-top, 0px), 16px) + 44px);
+  right: 16px;
+  padding: 5px 10px;
+  border-radius: 20px;
+  background: rgba(0, 0, 0, 0.45);
   color: #ffffff;
   font-size: 12px;
   font-weight: 500;
+  letter-spacing: 0.02em;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
-.skinlog-camera__switch {
+/* Error inside camera */
+.skinlog-camera__error-overlay {
   position: absolute;
-  top: 12px;
-  left: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  border: none;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.92);
-  color: var(--skinlog-text);
-  cursor: pointer;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+  left: 20px;
+  right: 20px;
+  bottom: 200px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: rgba(160, 30, 20, 0.88);
+  color: #ffffff;
+  font-size: 14px;
+  line-height: 1.45;
+  text-align: center;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
-.skinlog-camera__switch svg {
-  width: 20px;
-  height: 20px;
-  display: block;
-}
-
-.skinlog-camera__switch:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.skinlog-camera__empty {
+/* Bottom overlay — gradient + controls */
+.skinlog-camera__bottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 0 20px max(env(safe-area-inset-bottom, 0px), 28px);
+  padding-top: 48px;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.72) 0%,
+    rgba(0, 0, 0, 0.35) 60%,
+    transparent 100%
+  );
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  height: 100%;
-  padding: 24px;
-  text-align: center;
-  color: var(--skinlog-muted);
+  gap: 14px;
+}
+
+/* Mode toggle inside camera — frosted dark variant */
+.skinlog-camera__controls-slot .skinlog-mode-toggle {
+  background: rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.skinlog-camera__controls-slot .skinlog-mode-toggle__btn {
+  color: rgba(255, 255, 255, 0.6);
   font-size: 14px;
-  line-height: 1.5;
 }
 
-.skinlog-camera__actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 16px;
+.skinlog-camera__controls-slot .skinlog-mode-toggle__btn.is-active {
+  background: rgba(255, 255, 255, 0.92);
+  color: #111111;
+  box-shadow: none;
 }
 
-.skinlog-camera__actions .skinlog__btn {
-  flex: 1;
-}
-
-.skinlog-camera__controls {
-  display: flex;
-  justify-content: center;
-  margin-top: 20px;
-}
-
-.skinlog-camera__shutter {
-  width: 64px;
-  height: 64px;
+/* Prompt text */
+.skinlog-camera__prompt {
   margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.85);
+  text-align: center;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* Shutter row: [spacer] [shutter] [switch] */
+.skinlog-camera__shutter-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.skinlog-camera__shutter-spacer {
+  width: 48px;
+}
+
+/* Shutter button */
+.skinlog-camera__shutter {
+  width: 72px;
+  height: 72px;
   padding: 0;
-  border: 3px solid var(--skinlog-text);
+  border: 3px solid rgba(255, 255, 255, 0.85);
   border-radius: 50%;
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.18);
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .skinlog-camera__shutter::after {
   content: "";
   display: block;
-  width: 48px;
-  height: 48px;
-  margin: 5px auto;
+  width: 54px;
+  height: 54px;
+  margin: 6px auto;
   border-radius: 50%;
-  background: var(--skinlog-text);
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.skinlog-camera__shutter:active:not(:disabled)::after {
+  background: #ffffff;
 }
 
 .skinlog-camera__shutter:disabled {
-  opacity: 0.35;
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Switch camera button — pill with icon */
+.skinlog-camera__switch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  cursor: pointer;
+  flex-shrink: 0;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.skinlog-camera__switch svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
+
+.skinlog-camera__switch:active:not(:disabled) {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.skinlog-camera__switch:disabled {
+  opacity: 0.3;
   cursor: not-allowed;
 }
 
