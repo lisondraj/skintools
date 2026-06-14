@@ -1,36 +1,45 @@
 import type { InfographicContent } from "./types";
 
+const TYPE_LABELS: Record<string, string> = {
+  info: "INFO",
+  tip: "TIP",
+  warning: "WARNING",
+  note: "NOTE",
+};
+
 /** Flatten structured content into a text block for image-generation prompts. */
 export function flattenContent(
   content: InfographicContent,
   language: string,
 ): string {
   const facts = content.keyFacts
-    .map((f, i) => `  ${i + 1}. ${f}`)
+    .map((f, i) => `  Stat ${i + 1}: ${f}`)
     .join("\n");
 
   const sections = content.sections
     .map(
-      (s, i) =>
-        `  Section ${i + 1} [${s.type}]: ${s.heading}\n    ${s.body}`,
+      (s, i) => {
+        const tag = TYPE_LABELS[s.type] ?? s.type.toUpperCase();
+        return `  [${tag}] Section ${i + 1}: ${s.heading}\n    ${s.body}`;
+      },
     )
-    .join("\n");
+    .join("\n\n");
 
   const warning = content.warning
-    ? `\nWarning: ${content.warning}`
+    ? `\n⚠ SAFETY WARNING: ${content.warning}`
     : "";
 
   return `Language: ${language}
 
-Title: ${content.title}
-Subtitle: ${content.subtitle}
+TITLE: ${content.title}
+SUBTITLE: ${content.subtitle}
 
-Key facts:
+KEY FACTS / STATS (render as stat boxes or badges):
 ${facts}
 
-Sections:
+SECTIONS (render each with its type tag):
 ${sections}
 ${warning}
 
-Footer: ${content.footer}`;
+FOOTER: ${content.footer}`;
 }

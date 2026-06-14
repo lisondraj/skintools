@@ -40,9 +40,42 @@ function toJpegDataUrl(b64: string): string {
 }
 
 const STYLE_INTROS: Record<"A" | "B", string> = {
-  A: `Create a complete patient education infographic poster. Style A — Clinical professional: deep navy blue and ice-blue palette, clean horizontal bands, subtle medical decorative motifs, polished hospital-grade aesthetic. Portrait 2:3 aspect ratio.`,
+  A: `Create a VERTICAL PORTRAIT (2:3) patient education infographic poster for an Ontario, Canada dermatology clinic.
 
-  B: `Create a complete patient education infographic poster. Style B — Modern friendly: teal, mint green, and soft white palette, organic rounded shapes, airy whitespace, warm approachable wellness aesthetic. Portrait 2:3 aspect ratio.`,
+STYLE A — Two-column clinical editorial layout:
+STRUCTURE (top to bottom):
+1. Full-width HEADER BAND (deep navy #0a2540): Condition title in large bold white sans-serif, subtitle below in smaller ice-blue text. Ontario maple leaf icon small in top-right corner.
+2. Below header — TWO COLUMNS side by side filling most of the poster:
+   LEFT COLUMN (38% width, pale ice-blue #e8f4fd background): 
+     - "At a Glance" label at top
+     - 4 KEY STAT BOXES stacked vertically — each a small rounded rectangle with a bold large number/statistic and a 2-line label below it, alternating white and light teal backgrounds
+     - Small "Ontario Health" wordmark style text at the bottom of the column
+   RIGHT COLUMN (62% width, white background):
+     - 5-6 content sections stacked, each with: a small coloured category pill tag (INFO/TIP/WARNING/NOTE), bold section heading in dark navy, and 3-4 sentences of body text in dark grey
+     - Thin horizontal rule between each section
+     - Warning band (amber #f59e0b background) if a warning is present
+3. Full-width FOOTER BAND (dark navy): disclaimer text in white, Telehealth Ontario reference in small ice-blue text
+
+COLOUR PALETTE: Deep navy #0a2540, teal #0e7490, ice-blue #e8f4fd, amber accent #e8a820, white, dark grey text #1a202c
+TYPOGRAPHY: Clean geometric sans-serif, strong hierarchy, clinical precision`,
+
+  B: `Create a VERTICAL PORTRAIT (2:3) patient education infographic poster for an Ontario, Canada dermatology clinic.
+
+STYLE B — Single-column visual step-by-step journey layout:
+STRUCTURE (top to bottom):
+1. HEADER (warm coral-red #c0392b): Very large bold rounded sans-serif condition title in white, tagline below in light pink. Full width.
+2. QUICK FACTS ROW: 4 horizontal pill-shaped badges on cream background, each with an icon and short bold fact text. Teal (#0d9488) on warm cream (#faf5eb) background.
+3. CONTENT SECTIONS (6 sections) — each section is a distinct visual block:
+   - Large coloured circle on the LEFT with a section number (1-6) in white bold text
+   - Section heading in large bold dark text to the right of the circle
+   - Body text in slightly smaller regular weight dark grey below the heading
+   - Each section has a subtle left-side vertical colour bar matching its type (teal=info, coral=warning, gold=tip, sage=note)
+   - Alternating very-slightly-tinted row backgrounds (pure white and warm cream #faf5eb) for visual rhythm
+4. ONTARIO RESOURCES CALL-OUT BOX: Highlighted teal rounded rectangle panel, bold "Get Help in Ontario" heading, Telehealth Ontario number (1-800-797-0000) prominent, ontario.ca/health below.
+5. FOOTER: Warm cream background, small disclaimer text, Ontario Health reference.
+
+COLOUR PALETTE: Coral-red #c0392b, teal #0d9488, warm cream #faf5eb, gold #f59e0b, soft sage #6b9e7a, white, dark charcoal text #1a1a2e
+TYPOGRAPHY: Friendly rounded humanist sans-serif, generous line-height, large readable body text`,
 };
 
 function buildInfographicPrompt(
@@ -54,15 +87,17 @@ function buildInfographicPrompt(
 
   return `${STYLE_INTROS[style]}
 
-Render ALL of the following text directly in the infographic image — title, facts, section headings, section bodies, warning, and footer. Text must be clearly legible, well-typeset, and integrated into the design layout. Use a professional infographic layout with header, key-facts row, 4 content sections, optional warning band, and footer.
+CONTENT TO RENDER — embed ALL of the following text directly and legibly into the infographic image. Every word must appear in the image, well-typeset and integrated into the layout described above:
 
 ${textBlock}
 
-Rules:
-- Every word above must appear in the image
-- Plain-language patient education tone
-- No watermarks or placeholder text
-- Professional medical education quality`;
+CRITICAL RULES:
+- Follow the structural layout described above precisely — Style A must be two-column, Style B must be single-column step-by-step
+- Every line of text above must appear somewhere in the image — title, subtitle, all 4 key facts, all section headings and bodies, warning (if present), footer
+- Text must be clearly legible at normal reading size — no blurry, clipped, or overlapping text
+- Ontario Canada healthcare context — professional medical education quality
+- No watermarks, stock photo placeholders, or lorem ipsum text
+- Portrait 2:3 aspect ratio, full-bleed design from edge to edge`;
 }
 
 function generationBody(

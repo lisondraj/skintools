@@ -11,36 +11,78 @@ export async function generateContent(
   const key = getOpenAiKey();
   if (!key) throw new Error("OpenAI API key not configured.");
 
-  const userPrompt = `Create patient education infographic content.
+  const userPrompt = `Create detailed patient education infographic content for an Ontario, Canada dermatology clinic.
 
 Diagnosis: ${diagnosis}
-Additional context: ${instructions?.trim() || "(none — generate appropriate general content)"}
-Language: ${language}
+Additional clinical context: ${instructions?.trim() || "(none — generate comprehensive evidence-based content)"}
+Output language: ${language}
+
+You are writing for Ontario patients. Include Ontario-specific references where appropriate:
+- Mention OHIP coverage status if relevant (e.g. specialist referrals, prescribed topicals)
+- Reference Telehealth Ontario (1-800-797-0000) as an after-hours resource
+- Mention Ontario Dermatology Alliance or ontario.ca/health for further reading where suitable
+- Use Canadian spelling (colour, behaviour, centre, etc.) when language is English
 
 Respond with valid JSON (no markdown fences) matching exactly this shape:
 {
-  "title": "Main infographic title in ${language} — 30-50 chars",
-  "subtitle": "Short tagline in ${language} — under 60 chars",
+  "title": "Condition name + patient guide — 35-55 chars in ${language}",
+  "subtitle": "One-line clinical context — under 65 chars in ${language}",
   "keyFacts": [
-    "Fact 1 — under 32 chars in ${language}",
-    "Fact 2 — under 32 chars",
-    "Fact 3 — under 32 chars"
+    "Epidemiological or clinical fact — under 40 chars in ${language}",
+    "Prevalence or cause fact — under 40 chars",
+    "Treatment response stat — under 40 chars",
+    "Ontario/Canada relevance fact — under 40 chars"
   ],
   "sections": [
-    { "id": "s1", "heading": "Heading in ${language} — under 30 chars", "body": "2-3 sentences of clear plain-language content in ${language}.", "type": "info" },
-    { "id": "s2", "heading": "...", "body": "...", "type": "info" },
-    { "id": "s3", "heading": "Treatment / What to Do", "body": "...", "type": "tip" },
-    { "id": "s4", "heading": "When to Seek Help", "body": "...", "type": "warning" }
+    {
+      "id": "s1",
+      "heading": "What Is ${diagnosis}? — under 35 chars in ${language}",
+      "body": "3-4 sentences: definition, mechanism, prevalence in Canada, who is typically affected. Be medically accurate but plain-language (grade 7-8 reading level).",
+      "type": "info"
+    },
+    {
+      "id": "s2",
+      "heading": "Signs & Symptoms — under 35 chars in ${language}",
+      "body": "3-4 sentences describing the primary and secondary signs. Mention typical progression or variability. Note any features specific to skin of colour if relevant.",
+      "type": "info"
+    },
+    {
+      "id": "s3",
+      "heading": "Triggers & Risk Factors — under 35 chars in ${language}",
+      "body": "3-4 sentences on known triggers, environmental factors, and patient-modifiable risks. Include Ontario climate/seasonal factors if applicable.",
+      "type": "note"
+    },
+    {
+      "id": "s4",
+      "heading": "Treatment Options — under 35 chars in ${language}",
+      "body": "3-4 sentences covering first-line treatments, prescription options covered by ODB/OHIP, lifestyle modifications, and realistic treatment timelines.",
+      "type": "tip"
+    },
+    {
+      "id": "s5",
+      "heading": "When to See Your Doctor — under 35 chars in ${language}",
+      "body": "3-4 sentences on red-flag symptoms warranting urgent care, routine follow-up intervals, and how to access Ontario dermatology services (GP referral to dermatologist).",
+      "type": "warning"
+    },
+    {
+      "id": "s6",
+      "heading": "Ontario Resources — under 35 chars in ${language}",
+      "body": "3-4 sentences: Telehealth Ontario 1-800-797-0000 for after-hours advice, ontario.ca/health for information, Ontario Dermatology Alliance patient resources, and local public health unit support.",
+      "type": "note"
+    }
   ],
-  "warning": "One-sentence safety reminder in ${language}, or null",
-  "footer": "Disclaimer under 80 chars in ${language}"
+  "warning": "One critical safety reminder sentence in ${language} (e.g. do not stop medication without advice), or null if not applicable",
+  "footer": "Disclaimer referencing Ontario healthcare — under 90 chars in ${language}"
 }
 
 Rules:
-- ALL text in ${language}
-- Plain language for patients, reading level grade 6-8
-- Each section body: 2-3 sentences max
-- Exactly 4 sections, types must be info/tip/warning/note`;
+- ALL text output in ${language}
+- Canadian spelling if language is English
+- Medically accurate, evidence-based content appropriate for Ontario dermatology patients
+- Each section body: exactly 3-4 sentences, substantive and informative
+- Exactly 6 sections in the order shown
+- keyFacts: exactly 4 items, each a standalone punchy fact with a number or statistic where possible
+- Section types must be one of: info, tip, warning, note`;
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -55,7 +97,7 @@ Rules:
         {
           role: "system",
           content:
-            "You are a medical education content specialist. Output valid JSON only — no prose, no code fences.",
+            "You are a senior medical education specialist working with Ontario dermatology clinics. You write evidence-based, medically accurate patient education content aligned with Ontario Health and Canadian Dermatology Association guidelines. Output valid JSON only — no prose, no markdown, no code fences.",
         },
         { role: "user", content: userPrompt },
       ],
@@ -128,11 +170,11 @@ export async function generateInstructions(
         {
           role: "system",
           content:
-            "You write concise, practical patient education notes for infographics.",
+            "You are a medical education specialist for Ontario dermatology clinics. Write concise, evidence-based patient education notes aligned with Ontario Health guidelines.",
         },
         {
           role: "user",
-          content: `Write 3-4 bullet-point style instructions for a patient infographic about "${diagnosis}". Cover: what it is, what to do, what to avoid, when to see a doctor. Keep it plain-language. Write in ${language}.`,
+          content: `Write 4-5 bullet-point clinical instructions for a patient infographic about "${diagnosis}" for an Ontario, Canada dermatology clinic. Cover: what it is, how to manage it, what to avoid, OHIP/ODB coverage notes if relevant, and when to call Telehealth Ontario (1-800-797-0000) or see a dermatologist. Use plain language (grade 7-8). Use Canadian spelling. Write in ${language}.`,
         },
       ],
     }),
