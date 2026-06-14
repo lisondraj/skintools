@@ -26,6 +26,8 @@ function stepLabel(index: number): string {
   return index === 0 ? "Original" : `Edit ${index}`;
 }
 
+const MAX_VISIBLE = 3;
+
 function AlbumStack({
   album,
   onAlbumsChange,
@@ -39,10 +41,14 @@ function AlbumStack({
   onDeleteStep: (albumId: string, stepId: string) => void;
   onDeleteAlbum: (albumId: string) => void;
 }) {
+  // Show at most MAX_VISIBLE steps; always include the latest (last in array)
+  const visibleSteps = album.steps.slice(-MAX_VISIBLE);
+  const visibleCount = visibleSteps.length;
+
   return (
     <article
       className="remorph-album"
-      style={{ "--album-step-count": album.steps.length } as CSSProperties}
+      style={{ "--album-visible-count": visibleCount } as CSSProperties}
     >
       <div className="remorph-album__stack">
         {album.steps.length > 1 && (
@@ -60,19 +66,27 @@ function AlbumStack({
           </button>
         )}
 
-        {album.steps.map((step, index) => (
-          <AlbumStackLayer
-            key={step.id}
-            album={album}
-            step={step}
-            index={index}
-            total={album.steps.length}
-            onSelectImage={onSelectImage}
-            onDeleteStep={onDeleteStep}
-            onAlbumsChange={onAlbumsChange}
-            onDeleteAlbum={onDeleteAlbum}
-          />
-        ))}
+        {/* Render oldest first so latest (highest z-index) paints on top */}
+        {visibleSteps.map((step, visIdx) => {
+          const globalIndex = album.steps.indexOf(step);
+          const isLatest = visIdx === visibleCount - 1;
+          // stackDepth 0 = latest (front/leftmost), increases toward back
+          const stackDepth = visibleCount - 1 - visIdx;
+          return (
+            <AlbumStackLayer
+              key={step.id}
+              album={album}
+              step={step}
+              globalIndex={globalIndex}
+              stackDepth={stackDepth}
+              isLatest={isLatest}
+              onSelectImage={onSelectImage}
+              onDeleteStep={onDeleteStep}
+              onAlbumsChange={onAlbumsChange}
+              onDeleteAlbum={onDeleteAlbum}
+            />
+          );
+        })}
       </div>
     </article>
   );
@@ -81,8 +95,9 @@ function AlbumStack({
 function AlbumStackLayer({
   album,
   step,
-  index,
-  total,
+  globalIndex,
+  stackDepth,
+  isLatest,
   onSelectImage,
   onDeleteStep,
   onAlbumsChange,
@@ -90,16 +105,15 @@ function AlbumStackLayer({
 }: {
   album: RemorphAlbum;
   step: RemorphAlbumStep;
-  index: number;
-  total: number;
+  globalIndex: number;
+  stackDepth: number;
+  isLatest: boolean;
   onSelectImage: (image: string, albumId: string) => void;
   onDeleteStep: (albumId: string, stepId: string) => void;
   onAlbumsChange: () => void;
   onDeleteAlbum: (albumId: string) => void;
 }) {
-  const isLatest = index === total - 1;
-  const stackDepth = total - 1 - index;
-  const label = stepLabel(index);
+  const label = stepLabel(globalIndex);
   const dragPayload: RemorphDragStep = {
     image: step.image,
     albumId: album.id,
@@ -113,7 +127,7 @@ function AlbumStackLayer({
       style={
         {
           "--stack-depth": stackDepth,
-          zIndex: index + 1,
+          zIndex: MAX_VISIBLE - stackDepth,
         } as CSSProperties
       }
     >

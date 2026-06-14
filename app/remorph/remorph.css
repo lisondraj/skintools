@@ -25,7 +25,8 @@
     calc((min(100vw, var(--remorph-max)) - 56px - 12px) / 2)
   );
   --remorph-history-size: 212px;
-  --remorph-history-stack-offset: 18px;
+  --remorph-history-stack-offset-x: 18px;
+  --remorph-history-stack-offset-y: 8px;
 }
 
 .remorph__header {
@@ -429,7 +430,7 @@
 }
 
 .remorph__stage-wrap--split {
-  --_pane: var(--remorph-split-pane-size);
+  --_pane: var(--split-pane-size, var(--remorph-split-pane-size));
   width: calc(var(--_pane) * 2 + 12px);
   height: var(--_pane);
   min-width: 0;
@@ -460,9 +461,9 @@
 .remorph-split__pane {
   position: relative;
   display: block;
-  flex: 0 0 var(--remorph-split-pane-size);
-  width: var(--remorph-split-pane-size);
-  height: var(--remorph-split-pane-size);
+  flex: 0 0 var(--split-pane-size, var(--remorph-split-pane-size));
+  width: var(--split-pane-size, var(--remorph-split-pane-size));
+  height: var(--split-pane-size, var(--remorph-split-pane-size));
   padding: 0;
   border: 1px solid var(--remorph-border);
   border-radius: var(--remorph-radius);
@@ -950,19 +951,22 @@
 
 .remorph-album__stack {
   position: relative;
-  width: var(--remorph-history-size);
+  width: calc(
+    var(--remorph-history-size) +
+      (var(--album-visible-count, 1) - 1) * var(--remorph-history-stack-offset-x)
+  );
   height: calc(
     var(--remorph-history-size) +
-      (var(--album-step-count, 1) - 1) * var(--remorph-history-stack-offset)
+      (var(--album-visible-count, 1) - 1) * var(--remorph-history-stack-offset-y)
   );
 }
 
 .remorph-album__layer {
   position: absolute;
-  left: 0;
+  left: calc(var(--stack-depth, 0) * var(--remorph-history-stack-offset-x));
+  top: calc(var(--stack-depth, 0) * var(--remorph-history-stack-offset-y));
   width: var(--remorph-history-size);
   height: var(--remorph-history-size);
-  top: calc(var(--stack-depth, 0) * var(--remorph-history-stack-offset));
 }
 
 .remorph-album__delete {

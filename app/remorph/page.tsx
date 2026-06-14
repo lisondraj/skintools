@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { DraggableEditorPanel } from "@/components/remorph/DraggableEditorPanel";
 import { EntryBoxes } from "@/components/remorph/EntryBoxes";
 import { HistoryPanel } from "@/components/remorph/HistoryPanel";
@@ -98,6 +98,7 @@ export default function RemorphPage() {
   const [dropHover, setDropHover] = useState(false);
   const [splitDropHint, setSplitDropHint] = useState(false);
   const [promptEntryOpen, setPromptEntryOpen] = useState(false);
+  const [splitPaneSize, setSplitPaneSize] = useState<number | null>(null);
   const [floatInitialX, setFloatInitialX] = useState(24);
 
   const maskRef = useRef<MaskCanvasHandle>(null);
@@ -128,6 +129,7 @@ export default function RemorphPage() {
     setSplitMode(false);
     setCompareLeft(null);
     setCompareRight(null);
+    setSplitPaneSize(null);
     setFloatInitialX(24);
     setDropHover(false);
     clearMask();
@@ -142,8 +144,17 @@ export default function RemorphPage() {
     (left: RemorphComparePane, right: RemorphComparePane) => {
       const rect = stageWrapRef.current?.getBoundingClientRect();
       if (rect && rect.width > 0) {
-        // Position float to the right of where both panes will be
-        const panesWidth = rect.width * 2 + 12;
+        // Cap each pane so both fit side-by-side without overflow
+        const containerWidth =
+          stageWrapRef.current
+            ?.closest(".remorph__workspace")
+            ?.getBoundingClientRect().width ?? window.innerWidth;
+        const maxPaneSize = Math.floor((containerWidth - 12) / 2);
+        const paneSize = Math.min(Math.round(rect.width), maxPaneSize);
+        setSplitPaneSize(paneSize);
+
+        // Position float to the right of both panes
+        const panesWidth = paneSize * 2 + 12;
         const containerLeft = rect.left;
         const floatX = Math.min(
           containerLeft + panesWidth + 16,
@@ -641,6 +652,7 @@ export default function RemorphPage() {
           <div
             ref={stageWrapRef}
             className={`remorph__stage-wrap ${splitMode ? "remorph__stage-wrap--split" : ""} ${dropHover || splitDropHint ? "is-drop-target" : ""}`}
+            style={splitMode && splitPaneSize ? ({ "--split-pane-size": `${splitPaneSize}px` } as React.CSSProperties) : undefined}
             onDragOver={handleStageDragOver}
             onDragLeave={handleStageDragLeave}
             onDrop={handleStageDrop}
