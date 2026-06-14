@@ -5,16 +5,22 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
-  useMemo,
   useRef,
+  useState,
 } from "react";
 import { buildMaskFromSelection } from "@/lib/remorph/image-utils";
 import {
-  buildCategoryMasks,
-  hitTestRegion,
+  buildFeatureMasks,
+  computeSkinMask,
+  getImagePixels,
+  hitTestFeatureAt,
 } from "@/lib/remorph/segment-utils";
-import type { RemorphRegion } from "@/lib/remorph/types";
-import { REMORPH_STAGE_SIZE } from "@/lib/remorph/types";
+import type { RemorphFeature } from "@/lib/remorph/types";
+import {
+  REMORPH_SEG_RES,
+  REMORPH_SKIN_CATEGORY,
+  REMORPH_STAGE_SIZE,
+} from "@/lib/remorph/types";
 
 export type FeatureSelectHandle = {
   clear: () => void;
@@ -23,10 +29,12 @@ export type FeatureSelectHandle = {
 };
 
 type FeatureSelectCanvasProps = {
-  regions: RemorphRegion[];
+  image: string;
+  features: RemorphFeature[];
   disabled?: boolean;
   onSelectionChange?: (hasSelection: boolean) => void;
   onHoverCategoryChange?: (category: string | null, label: string | null) => void;
+  onMasksReady?: (ready: boolean) => void;
 };
 
 function mergeSelection(target: Uint8Array, source: Uint8Array): void {
@@ -46,14 +54,14 @@ function renderMaskOverlay(
   canvas: HTMLCanvasElement,
   committed: Uint8Array,
   hover: Uint8Array | null,
+  segSize: number,
 ): void {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
 
-  const size = REMORPH_STAGE_SIZE;
-  const overlay = ctx.createImageData(size, size);
+  const overlay = ctx.createImageData(segSize, segSize);
 
-  for (let i = 0; i < size * size; i++) {
+  for (let i = 0; i < segSize * segSize; i++) {
     const committedActive = committed[i] === 1;
     const hoverActive = hover?.[i] === 1 && !committedActive;
     if (!committedActive && !hoverActive) continue;
@@ -65,8 +73,16 @@ function renderMaskOverlay(
     overlay.data[oi + 3] = committedActive ? 110 : 70;
   }
 
-  ctx.clearRect(0, 0, size, size);
-  ctx.putImageData(overlay, 0, 0);
+  const scratch = document.createElement("canvas");
+  scratch.width = segSize;
+  scratch.height = segSize;
+  const scratchCtx = scratch.getContext("2d");
+  if (!scratchCtx) return;
+  scratchCtx.putImageData(overlay, 0, 0);
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(scratch, 0, 0, REMORPH_STAGE_SIZE, REMORPH_STAGE_SIZE);
 }
 
 export const FeatureSelectCanvas = forwardRef<
@@ -74,35 +90,38 @@ export const FeatureSelectCanvas = forwardRef<
   FeatureSelectCanvasProps
 >(function FeatureSelectCanvas(
   {
-    regions,
+    image,
+    features,
     disabled = false,
     onSelectionChange,
     onHoverCategoryChange,
+    onMasksReady,
   },
   ref,
 ) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const committedRef = useRef<Uint8Array>(
-    new Uint8Array(REMORPH_STAGE_SIZE * REMORPH_STAGE_SIZE),
+    new Uint8Array(REMORPH_SEG_RES * REMORPH_SEG_RES),
   );
   const hoverRef = useRef<Uint8Array | null>(null);
+  const featureMasksRef = useRef<Map<string, Uint8Array>>(new Map());
+  const categoryMasksRef = useRef<Map<string, Uint8Array>>(new Map());
   const rafRef = useRef<number | null>(null);
-
-  const categoryMasks = useMemo(
-    () => buildCategoryMasks(regions),
-    [regions],
-  );
+  const [masksReady, setMasksReady] = useState(false);
 
   const renderOverlay = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    renderMaskOverlay(canvas, committedRef.current, hoverRef.current);
+    renderMaskOverlay(
+      canvas,
+      committedRef.current,
+      hoverRef.current,
+      REMORPH_SEG_RES,
+    );
   }, []);
 
   const clear = useCallback(() => {
-    committedRef.current = new Uint8Array(
-      REMORPH_STAGE_SIZE * REMORPH_STAGE_SIZE,
-    );
+    committedRef.current = new Uint8Array(REMORPH_SEG_RES * REMORPH_SEG_RES);
     hoverRef.current = null;
     renderOverlay();
     onSelectionChange?.(false);
@@ -115,7 +134,8 @@ export const FeatureSelectCanvas = forwardRef<
     exportMask: () => {
       const { mask, hasSelection } = buildMaskFromSelection(
         committedRef.current,
-        REMORPH_STAGE_SIZE,
+        REMORPH_SEG_RES,
+        REMORPH_SEG_RES,
         REMORPH_STAGE_SIZE,
       );
       return { mask: hasSelection ? mask : null, hasSelection };
@@ -123,14 +143,58 @@ export const FeatureSelectCanvas = forwardRef<
   }));
 
   useEffect(() => {
-    committedRef.current = new Uint8Array(
-      REMORPH_STAGE_SIZE * REMORPH_STAGE_SIZE,
-    );
+    let cancelled = false;
+    setMasksReady(false);
+    onMasksReady?.(false);
+
+    committedRef.current = new Uint8Array(REMORPH_SEG_RES * REMORPH_SEG_RES);
     hoverRef.current = null;
+    featureMasksRef.current = new Map();
+    categoryMasksRef.current = new Map();
     renderOverlay();
     onSelectionChange?.(false);
     onHoverCategoryChange?.(null, null);
-  }, [regions, onHoverCategoryChange, onSelectionChange, renderOverlay]);
+
+    async function prepareMasks() {
+      try {
+        const pixels = await getImagePixels(image, REMORPH_SEG_RES);
+        if (cancelled) return;
+
+        const { featureMasks, categoryMasks } = buildFeatureMasks(
+          features,
+          pixels,
+          REMORPH_SEG_RES,
+        );
+        const skinMask = computeSkinMask(categoryMasks, REMORPH_SEG_RES);
+        categoryMasks.set(REMORPH_SKIN_CATEGORY, skinMask);
+
+        if (cancelled) return;
+        featureMasksRef.current = featureMasks;
+        categoryMasksRef.current = categoryMasks;
+        setMasksReady(true);
+        onMasksReady?.(true);
+        renderOverlay();
+      } catch {
+        if (!cancelled) {
+          setMasksReady(false);
+          onMasksReady?.(false);
+        }
+      }
+    }
+
+    void prepareMasks();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    features,
+    image,
+    onHoverCategoryChange,
+    onMasksReady,
+    onSelectionChange,
+    renderOverlay,
+  ]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -151,7 +215,7 @@ export const FeatureSelectCanvas = forwardRef<
   const updateHover = useCallback(
     (clientX: number, clientY: number) => {
       const canvas = canvasRef.current;
-      if (!canvas || disabled || regions.length === 0) return;
+      if (!canvas || disabled || !masksReady) return;
 
       const rect = canvas.getBoundingClientRect();
       const nx = Math.min(
@@ -163,20 +227,21 @@ export const FeatureSelectCanvas = forwardRef<
         Math.max(0, (clientY - rect.top) / rect.height),
       );
 
-      const hit = hitTestRegion(regions, nx, ny);
-      if (!hit) {
-        hoverRef.current = null;
-        onHoverCategoryChange?.(null, null);
-        renderOverlay();
-        return;
-      }
+      const hit = hitTestFeatureAt(
+        featureMasksRef.current,
+        features,
+        categoryMasksRef.current,
+        nx,
+        ny,
+        REMORPH_SEG_RES,
+      );
 
-      const categoryMask = categoryMasks.get(hit.category);
+      const categoryMask = categoryMasksRef.current.get(hit.category);
       hoverRef.current = categoryMask ? new Uint8Array(categoryMask) : null;
       onHoverCategoryChange?.(hit.category, hit.label);
       renderOverlay();
     },
-    [categoryMasks, disabled, onHoverCategoryChange, regions, renderOverlay],
+    [disabled, features, masksReady, onHoverCategoryChange, renderOverlay],
   );
 
   const scheduleHoverUpdate = useCallback(
@@ -193,7 +258,7 @@ export const FeatureSelectCanvas = forwardRef<
   const handleClick = useCallback(
     (clientX: number, clientY: number) => {
       const canvas = canvasRef.current;
-      if (!canvas || disabled || regions.length === 0) return;
+      if (!canvas || disabled || !masksReady) return;
 
       const rect = canvas.getBoundingClientRect();
       const nx = Math.min(
@@ -205,17 +270,23 @@ export const FeatureSelectCanvas = forwardRef<
         Math.max(0, (clientY - rect.top) / rect.height),
       );
 
-      const hit = hitTestRegion(regions, nx, ny);
-      if (!hit) return;
+      const hit = hitTestFeatureAt(
+        featureMasksRef.current,
+        features,
+        categoryMasksRef.current,
+        nx,
+        ny,
+        REMORPH_SEG_RES,
+      );
 
-      const categoryMask = categoryMasks.get(hit.category);
+      const categoryMask = categoryMasksRef.current.get(hit.category);
       if (!categoryMask) return;
 
       mergeSelection(committedRef.current, categoryMask);
       renderOverlay();
       onSelectionChange?.(countSelected(committedRef.current));
     },
-    [categoryMasks, disabled, onSelectionChange, regions, renderOverlay],
+    [disabled, features, masksReady, onSelectionChange, renderOverlay],
   );
 
   return (
@@ -224,7 +295,7 @@ export const FeatureSelectCanvas = forwardRef<
       className="remorph-stage__select"
       aria-label="Hover to highlight feature types, click to select"
       onPointerMove={(event) => {
-        if (disabled) return;
+        if (disabled || !masksReady) return;
         scheduleHoverUpdate(event.clientX, event.clientY);
       }}
       onPointerLeave={() => {
@@ -233,7 +304,7 @@ export const FeatureSelectCanvas = forwardRef<
         renderOverlay();
       }}
       onClick={(event) => {
-        if (disabled) return;
+        if (disabled || !masksReady) return;
         handleClick(event.clientX, event.clientY);
       }}
     />

@@ -1,37 +1,43 @@
 import { getOpenAiKey, getOpenAiModel } from "@/lib/skinlog/env";
-import type { RemorphRegion, SegmentResponse } from "@/lib/remorph/types";
+import type { RemorphFeature, SegmentResponse } from "@/lib/remorph/types";
 
 type OpenAiSegmentPayload = {
-  regions: Array<{
+  features?: Array<{
     label?: string;
     category?: string;
-    polygon?: Array<[number, number] | { x?: number; y?: number }>;
+    point?: [number, number] | { x?: number; y?: number };
+    box?: [number, number, number, number];
   }>;
 };
 
-const SEGMENT_PROMPT = `You are a dermatology image segmentation assistant for a region-targeted photo editor.
+const SEGMENT_PROMPT = `You are a dermatology image analysis assistant for a region-targeted photo editor.
 
-Analyze this clinical close-up skin photo and identify distinct visual regions the user may want to edit separately.
+Analyze this clinical close-up skin photo and list every distinct skin FINDING (lesion) the user may want to edit separately.
 
-Return regions for:
-1. All visible background skin (category: "skin") — the normal skin surface NOT part of a distinct lesion. Use one polygon tracing the overall skin area.
-2. Each distinct skin finding as its own region with a morphology category slug, e.g. "papule", "macule", "plaque", "patch", "nodule", "pustule", "vesicle", "scale", "scar", "erythema", "hyperpigmentation", etc.
+Do NOT include background/normal skin. List only distinct findings such as: macules, patches, papules, plaques, nodules, pustules, vesicles, scales, crusts, scars, erythema, hyperpigmentation, hypopigmentation, etc.
+
+For each finding return:
+- category: lowercase morphology slug (e.g. "papule", "macule", "pustule", "plaque")
+- label: short human-readable description (e.g. "Erythematous pustule (center-right)")
+- point: [x, y] normalized center of the finding (0.0 = left/top edge, 1.0 = right/bottom edge)
+- box: [x, y, w, h] normalized tight bounding box around the finding (x,y = top-left corner, w,h = width/height as fractions of image)
 
 Rules:
-- Use lowercase slug categories. All papules share category "papule", all macules share "macule", etc.
-- Each region needs a short human-readable label (e.g. "Background skin", "Erythematous papule (upper left)").
-- polygon: 4–12 points as [x, y] pairs tracing the feature boundary. Coordinates are normalized 0.0–1.0 (0 = left/top edge, 1 = right/bottom edge).
-- Polygons should tightly wrap each feature. Do not overlap skin and lesion polygons heavily.
-- Do NOT diagnose. Describe morphology only.
-- Include at least the "skin" region if any skin is visible.
+- All coordinates normalized 0.0–1.0 relative to the full image.
+- point must lie inside box.
+- box should tightly wrap the visible finding.
+- Multiple findings of the same category are separate entries (e.g. two papules = two features).
+- Do NOT diagnose. Use morphological language only.
+- If no findings are visible, return an empty features array.
 
 Return JSON only:
 {
-  "regions": [
+  "features": [
     {
-      "label": "Background skin",
-      "category": "skin",
-      "polygon": [[0.1, 0.1], [0.9, 0.1], [0.9, 0.9], [0.1, 0.9]]
+      "label": "Dark brown macule (left)",
+      "category": "macule",
+      "point": [0.35, 0.52],
+      "box": [0.28, 0.45, 0.12, 0.12]
     }
   ]
 }`;
@@ -48,49 +54,38 @@ function normalizeCategory(raw: string): string {
     .replace(/^_|_$/g, "");
 }
 
-function normalizePolygon(
-  raw: OpenAiSegmentPayload["regions"][number]["polygon"],
-): [number, number][] {
-  if (!Array.isArray(raw)) return [];
-
-  const points: [number, number][] = [];
-  for (const point of raw) {
-    if (Array.isArray(point) && point.length >= 2) {
-      points.push([clamp01(Number(point[0])), clamp01(Number(point[1]))]);
-    } else if (point && typeof point === "object") {
-      const obj = point as { x?: number; y?: number };
-      if (typeof obj.x === "number" && typeof obj.y === "number") {
-        points.push([clamp01(obj.x), clamp01(obj.y)]);
-      }
+function normalizePoint(raw: unknown): [number, number] | null {
+  if (Array.isArray(raw) && raw.length >= 2) {
+    return [clamp01(Number(raw[0])), clamp01(Number(raw[1]))];
+  }
+  if (raw && typeof raw === "object") {
+    const obj = raw as { x?: number; y?: number };
+    if (typeof obj.x === "number" && typeof obj.y === "number") {
+      return [clamp01(obj.x), clamp01(obj.y)];
     }
   }
-
-  return points;
+  return null;
 }
 
-function fallbackCirclePolygon(
-  points: [number, number][],
-): [number, number][] {
-  if (points.length >= 3) return points;
-
-  const cx =
-    points.length > 0
-      ? points.reduce((sum, p) => sum + p[0], 0) / points.length
-      : 0.5;
-  const cy =
-    points.length > 0
-      ? points.reduce((sum, p) => sum + p[1], 0) / points.length
-      : 0.5;
-  const r = 0.04;
-  const circle: [number, number][] = [];
-  for (let i = 0; i < 8; i++) {
-    const angle = (i / 8) * Math.PI * 2;
-    circle.push([
-      clamp01(cx + Math.cos(angle) * r),
-      clamp01(cy + Math.sin(angle) * r),
-    ]);
+function normalizeBox(
+  raw: [number, number, number, number] | undefined,
+  point: [number, number],
+): [number, number, number, number] {
+  if (Array.isArray(raw) && raw.length >= 4) {
+    const x = clamp01(Number(raw[0]));
+    const y = clamp01(Number(raw[1]));
+    const w = Math.max(0.02, clamp01(Number(raw[2])));
+    const h = Math.max(0.02, clamp01(Number(raw[3])));
+    return [x, y, Math.min(w, 1 - x), Math.min(h, 1 - y)];
   }
-  return circle;
+
+  const size = 0.08;
+  return [
+    clamp01(point[0] - size / 2),
+    clamp01(point[1] - size / 2),
+    size,
+    size,
+  ];
 }
 
 export async function segmentRemorphImage(
@@ -148,25 +143,24 @@ export async function segmentRemorphImage(
     throw new Error("OpenAI returned invalid segmentation JSON.");
   }
 
-  const regions: RemorphRegion[] = (parsed.regions ?? [])
-    .map((region) => {
-      const category = normalizeCategory(region.category ?? "region");
-      const label = region.label?.trim() || category;
-      const polygon = fallbackCirclePolygon(normalizePolygon(region.polygon));
-      if (polygon.length < 3) return null;
+  const features: RemorphFeature[] = (parsed.features ?? [])
+    .map((feature) => {
+      const point = normalizePoint(feature.point);
+      if (!point) return null;
+
+      const category = normalizeCategory(feature.category ?? "finding");
+      const label = feature.label?.trim() || category;
+      const bbox = normalizeBox(feature.box, point);
 
       return {
         id: crypto.randomUUID(),
         label,
         category,
-        polygon,
+        seed: point,
+        bbox,
       };
     })
-    .filter((region): region is RemorphRegion => region !== null);
+    .filter((feature): feature is RemorphFeature => feature !== null);
 
-  if (regions.length === 0) {
-    throw new Error("No editable regions were detected in this image.");
-  }
-
-  return { regions };
+  return { features };
 }

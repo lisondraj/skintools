@@ -6,16 +6,17 @@ import { PromptBar } from "@/components/remorph/PromptBar";
 import type { FeatureSelectHandle } from "@/components/remorph/FeatureSelectCanvas";
 import { editImage, generateImage, segmentImage } from "@/lib/remorph/client";
 import { normalizeToStage, readFileAsDataUrl } from "@/lib/remorph/image-utils";
-import type { RemorphRegion } from "@/lib/remorph/types";
+import type { RemorphFeature } from "@/lib/remorph/types";
 
 export default function RemorphPage() {
   const [image, setImage] = useState<string | null>(null);
   const [previousImage, setPreviousImage] = useState<string | null>(null);
-  const [regions, setRegions] = useState<RemorphRegion[]>([]);
+  const [features, setFeatures] = useState<RemorphFeature[]>([]);
   const [prompt, setPrompt] = useState("");
   const [busy, setBusy] = useState(false);
   const [segmenting, setSegmenting] = useState(false);
   const [segmentError, setSegmentError] = useState<string | null>(null);
+  const [masksReady, setMasksReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasSelection, setHasSelection] = useState(false);
   const [hoverLabel, setHoverLabel] = useState<string | null>(null);
@@ -35,13 +36,14 @@ export default function RemorphPage() {
       imageRef.current = source;
       setSegmenting(true);
       setSegmentError(null);
-      setRegions([]);
+      setFeatures([]);
+      setMasksReady(false);
       clearSelection();
 
       try {
         const result = await segmentImage(source);
         if (imageRef.current !== source) return;
-        setRegions(result.regions);
+        setFeatures(result.features);
       } catch (segmentErr) {
         if (imageRef.current !== source) return;
         setSegmentError(
@@ -61,35 +63,31 @@ export default function RemorphPage() {
   useEffect(() => {
     if (!image) {
       imageRef.current = null;
-      setRegions([]);
+      setFeatures([]);
       setSegmentError(null);
       setSegmenting(false);
+      setMasksReady(false);
       return;
     }
     void runSegmentation(image);
   }, [image, runSegmentation]);
 
-  const handleUpload = useCallback(
-    async (file: File) => {
-      setError(null);
-      setBusy(true);
-      try {
-        const dataUrl = await readFileAsDataUrl(file);
-        const normalized = await normalizeToStage(dataUrl);
-        setPreviousImage(null);
-        setImage(normalized);
-      } catch (uploadError) {
-        setError(
-          uploadError instanceof Error
-            ? uploadError.message
-            : "Upload failed.",
-        );
-      } finally {
-        setBusy(false);
-      }
-    },
-    [],
-  );
+  const handleUpload = useCallback(async (file: File) => {
+    setError(null);
+    setBusy(true);
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      const normalized = await normalizeToStage(dataUrl);
+      setPreviousImage(null);
+      setImage(normalized);
+    } catch (uploadError) {
+      setError(
+        uploadError instanceof Error ? uploadError.message : "Upload failed.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }, []);
 
   const handleGenerate = useCallback(async () => {
     const trimmed = prompt.trim();
@@ -114,7 +112,7 @@ export default function RemorphPage() {
   }, [prompt]);
 
   const handleEdit = useCallback(async () => {
-    if (!image || segmentError || segmenting) return;
+    if (!image || segmentError || segmenting || !masksReady) return;
     const trimmed = prompt.trim();
     if (!trimmed) return;
 
@@ -137,7 +135,7 @@ export default function RemorphPage() {
     } finally {
       setBusy(false);
     }
-  }, [image, prompt, segmentError, segmenting]);
+  }, [image, masksReady, prompt, segmentError, segmenting]);
 
   const handleUndo = useCallback(() => {
     if (!previousImage) return;
@@ -147,7 +145,9 @@ export default function RemorphPage() {
   }, [previousImage]);
 
   const handleSubmit = image ? handleEdit : handleGenerate;
-  const segmentReady = Boolean(image && !segmenting && !segmentError);
+  const segmentReady = Boolean(
+    image && !segmenting && !segmentError && masksReady,
+  );
 
   return (
     <div className="remorph__shell">
@@ -165,18 +165,27 @@ export default function RemorphPage() {
               <ImageStage
                 ref={selectRef}
                 image={image}
-                regions={regions}
+                features={features}
                 disabled={busy || segmenting || Boolean(segmentError)}
                 onSelectionChange={setHasSelection}
                 onHoverCategoryChange={(_category, label) =>
                   setHoverLabel(label)
                 }
+                onMasksReady={setMasksReady}
               />
               {segmenting && (
                 <div className="remorph-stage__overlay">
                   <div className="remorph__loading">
                     <span className="remorph__spinner" aria-hidden />
                     Analyzing features…
+                  </div>
+                </div>
+              )}
+              {!segmenting && !segmentError && !masksReady && (
+                <div className="remorph-stage__overlay">
+                  <div className="remorph__loading">
+                    <span className="remorph__spinner" aria-hidden />
+                    Preparing selection…
                   </div>
                 </div>
               )}

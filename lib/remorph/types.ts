@@ -12,11 +12,12 @@ export type SegmentRequest = {
   image: string;
 };
 
-export type RemorphRegion = {
+export type RemorphFeature = {
   id: string;
   label: string;
   category: string;
-  polygon: [number, number][];
+  seed: [number, number];
+  bbox: [number, number, number, number];
 };
 
 export type ImageResponse = {
@@ -24,7 +25,9 @@ export type ImageResponse = {
 };
 
 export type SegmentResponse = {
-  regions: RemorphRegion[];
+  features: RemorphFeature[];
 };
 
 export const REMORPH_STAGE_SIZE = 1024;
+export const REMORPH_SEG_RES = 512;
+export const REMORPH_SKIN_CATEGORY = "skin";
