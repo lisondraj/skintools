@@ -5,17 +5,25 @@ import {
   FeatureSelectCanvas,
   type FeatureSelectHandle,
 } from "@/components/remorph/FeatureSelectCanvas";
+import type { RemorphRegion } from "@/lib/remorph/types";
 
 type ImageStageProps = {
   image: string;
-  tolerance: number;
+  regions: RemorphRegion[];
   disabled?: boolean;
   onSelectionChange?: (hasSelection: boolean) => void;
+  onHoverCategoryChange?: (category: string | null, label: string | null) => void;
 };
 
 export const ImageStage = forwardRef<FeatureSelectHandle, ImageStageProps>(
   function ImageStage(
-    { image, tolerance, disabled = false, onSelectionChange },
+    {
+      image,
+      regions,
+      disabled = false,
+      onSelectionChange,
+      onHoverCategoryChange,
+    },
     ref,
   ) {
     return (
@@ -24,10 +32,10 @@ export const ImageStage = forwardRef<FeatureSelectHandle, ImageStageProps>(
         <img src={image} alt="Current image" className="remorph-stage__image" />
         <FeatureSelectCanvas
           ref={ref}
-          image={image}
-          tolerance={tolerance}
+          regions={regions}
           disabled={disabled}
           onSelectionChange={onSelectionChange}
+          onHoverCategoryChange={onHoverCategoryChange}
         />
       </div>
     );

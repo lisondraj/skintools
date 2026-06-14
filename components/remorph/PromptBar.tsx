@@ -6,11 +6,11 @@ type PromptBarProps = {
   onPromptChange: (value: string) => void;
   onSubmit: () => void;
   busy?: boolean;
-  tolerance: number;
-  onToleranceChange: (value: number) => void;
   onClearSelection: () => void;
   hasImage: boolean;
   hasSelection: boolean;
+  hoverLabel: string | null;
+  segmentReady: boolean;
 };
 
 export function PromptBar({
@@ -19,11 +19,11 @@ export function PromptBar({
   onPromptChange,
   onSubmit,
   busy = false,
-  tolerance,
-  onToleranceChange,
   onClearSelection,
   hasImage,
   hasSelection,
+  hoverLabel,
+  segmentReady,
 }: PromptBarProps) {
   const isGenerate = mode === "generate";
 
@@ -33,30 +33,22 @@ export function PromptBar({
         <section className="remorph__section">
           <h2 className="remorph__section-title">Feature select</h2>
           <p className="remorph__hint">
-            Hover a feature to highlight everything like it; click to select.
-            Click more features to add. Unselected areas stay identical.
+            Hover a feature to highlight all regions of the same type; click to
+            select. Click another type to add. Unselected areas stay identical.
           </p>
-          <label className="remorph__label" htmlFor="tolerance">
-            Similarity ({tolerance})
-          </label>
-          <input
-            id="tolerance"
-            className="remorph__range"
-            type="range"
-            min={0}
-            max={100}
-            value={tolerance}
-            onChange={(event) => onToleranceChange(Number(event.target.value))}
-            disabled={busy}
-          />
+          {hoverLabel ? (
+            <p className="remorph__category-label">Hovering: {hoverLabel}</p>
+          ) : null}
           <p
             className={`remorph__selection-status${
               hasSelection ? " is-active" : ""
             }`}
           >
-            {hasSelection
-              ? "Region selected — edit will apply only to the highlight."
-              : "No region selected — edit will apply to the whole image."}
+            {!segmentReady
+              ? "Analyzing features…"
+              : hasSelection
+                ? "Region selected — edit will apply only to the highlight."
+                : "No region selected — edit will apply to the whole image."}
           </p>
           <div className="remorph__btn-row" style={{ marginTop: 12 }}>
             <button
@@ -100,7 +92,7 @@ export function PromptBar({
           className="remorph__btn"
           style={{ marginTop: 12 }}
           onClick={onSubmit}
-          disabled={busy || !prompt.trim()}
+          disabled={busy || !prompt.trim() || (hasImage && !segmentReady)}
         >
           {busy ? "Working..." : isGenerate ? "Generate image" : "Apply edit"}
         </button>

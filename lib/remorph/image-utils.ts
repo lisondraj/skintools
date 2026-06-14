@@ -1,7 +1,5 @@
 import { REMORPH_STAGE_SIZE } from "@/lib/remorph/types";
 
-export const REMORPH_WORK_SIZE = 256;
-
 export function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -9,54 +7,6 @@ export function loadImage(src: string): Promise<HTMLImageElement> {
     img.onerror = () => reject(new Error("Could not load image."));
     img.src = src;
   });
-}
-
-/** Map slider value (0–100) to RGB distance threshold. */
-export function toleranceToThreshold(tolerance: number): number {
-  return 5 + (tolerance / 100) * 175;
-}
-
-/** Draw image to a square canvas and return pixel data. */
-export async function getStagePixels(
-  image: string,
-  workSize = REMORPH_WORK_SIZE,
-): Promise<ImageData> {
-  const img = await loadImage(image);
-  const canvas = document.createElement("canvas");
-  canvas.width = workSize;
-  canvas.height = workSize;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Could not read image pixels.");
-  ctx.drawImage(img, 0, 0, workSize, workSize);
-  return ctx.getImageData(0, 0, workSize, workSize);
-}
-
-/** Select all pixels globally within color distance of the target pixel. */
-export function selectSimilar(
-  pixels: ImageData,
-  pixelIndex: number,
-  tolerance: number,
-): Uint8Array {
-  const { width, height, data } = pixels;
-  const total = width * height;
-  const selection = new Uint8Array(total);
-  const base = pixelIndex * 4;
-  const tr = data[base];
-  const tg = data[base + 1];
-  const tb = data[base + 2];
-  const thresholdSq = toleranceToThreshold(tolerance) ** 2;
-
-  for (let i = 0; i < total; i++) {
-    const pi = i * 4;
-    const dr = data[pi] - tr;
-    const dg = data[pi + 1] - tg;
-    const db = data[pi + 2] - tb;
-    if (dr * dr + dg * dg + db * db <= thresholdSq) {
-      selection[i] = 1;
-    }
-  }
-
-  return selection;
 }
 
 function dilateSelection(

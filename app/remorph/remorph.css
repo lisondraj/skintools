@@ -183,6 +183,14 @@
   color: #8f2018;
 }
 
+.remorph__category-label {
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--remorph-text);
+  font-weight: 500;
+}
+
 .remorph__error {
   padding: 12px 14px;
   border-radius: 10px;
@@ -237,4 +245,23 @@
   height: 100%;
   touch-action: none;
   cursor: crosshair;
+}
+
+.remorph-stage__overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 24px;
+  z-index: 2;
+}
+
+.remorph-stage__overlay-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 320px;
+  width: 100%;
 }

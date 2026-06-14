@@ -1,28 +1,73 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ImageStage } from "@/components/remorph/ImageStage";
 import { PromptBar } from "@/components/remorph/PromptBar";
 import type { FeatureSelectHandle } from "@/components/remorph/FeatureSelectCanvas";
-import { editImage, generateImage } from "@/lib/remorph/client";
+import { editImage, generateImage, segmentImage } from "@/lib/remorph/client";
 import { normalizeToStage, readFileAsDataUrl } from "@/lib/remorph/image-utils";
+import type { RemorphRegion } from "@/lib/remorph/types";
 
 export default function RemorphPage() {
   const [image, setImage] = useState<string | null>(null);
   const [previousImage, setPreviousImage] = useState<string | null>(null);
+  const [regions, setRegions] = useState<RemorphRegion[]>([]);
   const [prompt, setPrompt] = useState("");
   const [busy, setBusy] = useState(false);
+  const [segmenting, setSegmenting] = useState(false);
+  const [segmentError, setSegmentError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [tolerance, setTolerance] = useState(50);
   const [hasSelection, setHasSelection] = useState(false);
+  const [hoverLabel, setHoverLabel] = useState<string | null>(null);
 
   const selectRef = useRef<FeatureSelectHandle>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageRef = useRef<string | null>(null);
 
   const clearSelection = useCallback(() => {
     selectRef.current?.clear();
     setHasSelection(false);
+    setHoverLabel(null);
   }, []);
+
+  const runSegmentation = useCallback(
+    async (source: string) => {
+      imageRef.current = source;
+      setSegmenting(true);
+      setSegmentError(null);
+      setRegions([]);
+      clearSelection();
+
+      try {
+        const result = await segmentImage(source);
+        if (imageRef.current !== source) return;
+        setRegions(result.regions);
+      } catch (segmentErr) {
+        if (imageRef.current !== source) return;
+        setSegmentError(
+          segmentErr instanceof Error
+            ? segmentErr.message
+            : "Feature analysis failed.",
+        );
+      } finally {
+        if (imageRef.current === source) {
+          setSegmenting(false);
+        }
+      }
+    },
+    [clearSelection],
+  );
+
+  useEffect(() => {
+    if (!image) {
+      imageRef.current = null;
+      setRegions([]);
+      setSegmentError(null);
+      setSegmenting(false);
+      return;
+    }
+    void runSegmentation(image);
+  }, [image, runSegmentation]);
 
   const handleUpload = useCallback(
     async (file: File) => {
@@ -33,7 +78,6 @@ export default function RemorphPage() {
         const normalized = await normalizeToStage(dataUrl);
         setPreviousImage(null);
         setImage(normalized);
-        clearSelection();
       } catch (uploadError) {
         setError(
           uploadError instanceof Error
@@ -44,7 +88,7 @@ export default function RemorphPage() {
         setBusy(false);
       }
     },
-    [clearSelection],
+    [],
   );
 
   const handleGenerate = useCallback(async () => {
@@ -58,7 +102,6 @@ export default function RemorphPage() {
       const normalized = await normalizeToStage(generated);
       setPreviousImage(null);
       setImage(normalized);
-      clearSelection();
     } catch (generateError) {
       setError(
         generateError instanceof Error
@@ -68,10 +111,10 @@ export default function RemorphPage() {
     } finally {
       setBusy(false);
     }
-  }, [clearSelection, prompt]);
+  }, [prompt]);
 
   const handleEdit = useCallback(async () => {
-    if (!image) return;
+    if (!image || segmentError || segmenting) return;
     const trimmed = prompt.trim();
     if (!trimmed) return;
 
@@ -87,7 +130,6 @@ export default function RemorphPage() {
       const normalized = await normalizeToStage(edited);
       setPreviousImage(image);
       setImage(normalized);
-      clearSelection();
     } catch (editError) {
       setError(
         editError instanceof Error ? editError.message : "Edit failed.",
@@ -95,17 +137,17 @@ export default function RemorphPage() {
     } finally {
       setBusy(false);
     }
-  }, [clearSelection, image, prompt]);
+  }, [image, prompt, segmentError, segmenting]);
 
   const handleUndo = useCallback(() => {
     if (!previousImage) return;
     setImage(previousImage);
     setPreviousImage(null);
-    clearSelection();
     setError(null);
-  }, [clearSelection, previousImage]);
+  }, [previousImage]);
 
   const handleSubmit = image ? handleEdit : handleGenerate;
+  const segmentReady = Boolean(image && !segmenting && !segmentError);
 
   return (
     <div className="remorph__shell">
@@ -119,13 +161,40 @@ export default function RemorphPage() {
       <div className="remorph__workspace">
         <div className="remorph__stage-wrap">
           {image ? (
-            <ImageStage
-              ref={selectRef}
-              image={image}
-              tolerance={tolerance}
-              disabled={busy}
-              onSelectionChange={setHasSelection}
-            />
+            <>
+              <ImageStage
+                ref={selectRef}
+                image={image}
+                regions={regions}
+                disabled={busy || segmenting || Boolean(segmentError)}
+                onSelectionChange={setHasSelection}
+                onHoverCategoryChange={(_category, label) =>
+                  setHoverLabel(label)
+                }
+              />
+              {segmenting && (
+                <div className="remorph-stage__overlay">
+                  <div className="remorph__loading">
+                    <span className="remorph__spinner" aria-hidden />
+                    Analyzing features…
+                  </div>
+                </div>
+              )}
+              {segmentError && !segmenting && (
+                <div className="remorph-stage__overlay">
+                  <div className="remorph-stage__overlay-panel">
+                    <p className="remorph__error">{segmentError}</p>
+                    <button
+                      type="button"
+                      className="remorph__btn remorph__btn--secondary"
+                      onClick={() => void runSegmentation(image)}
+                    >
+                      Retry analysis
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           ) : (
             <div className="remorph__stage-empty">
               <p>Upload a close-up skin photo or generate one with AI.</p>
@@ -190,11 +259,11 @@ export default function RemorphPage() {
             onPromptChange={setPrompt}
             onSubmit={() => void handleSubmit()}
             busy={busy}
-            tolerance={tolerance}
-            onToleranceChange={setTolerance}
             onClearSelection={clearSelection}
             hasImage={Boolean(image)}
             hasSelection={hasSelection}
+            hoverLabel={hoverLabel}
+            segmentReady={segmentReady}
           />
         </div>
       </div>
