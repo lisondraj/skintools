@@ -1,7 +1,7 @@
 export interface InfographicContent {
   title: string;
   subtitle: string;
-  keyFacts: string[]; // 3 short facts
+  keyFacts: string[];
   sections: IGSection[];
   warning: string | null;
   footer: string;
@@ -14,79 +14,28 @@ export interface IGSection {
   type: "info" | "tip" | "warning" | "note";
 }
 
-// ── SVG vector element types ────────────────────────────────────
-
-interface IGBase {
-  id: string;
-  selectable?: boolean;
-  textEditable?: boolean;
-}
-
-export interface IGRectEl extends IGBase {
-  kind: "rect";
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  fill: string;
-  stroke?: string;
-  strokeWidth?: number;
-  rx?: number;
-  opacity?: number;
-}
-
-export interface IGTextEl extends IGBase {
-  kind: "text";
-  x: number;
-  y: number;
-  rawText: string;
-  lines: string[];
-  fontSize: number;
-  fontWeight?: number | string;
-  fill: string;
-  anchor?: "start" | "middle" | "end";
-  lineH?: number;
-  fontStyle?: string;
-}
-
-export interface IGCircleEl extends IGBase {
-  kind: "circle";
-  cx: number;
-  cy: number;
-  r: number;
-  fill: string;
-  stroke?: string;
-  strokeWidth?: number;
-}
-
-export interface IGLineEl extends IGBase {
-  kind: "line";
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
-  stroke: string;
-  strokeWidth?: number;
-}
-
-export type IGElement = IGRectEl | IGTextEl | IGCircleEl | IGLineEl;
-
-export interface InfographicDoc {
+export interface InfographicDesign {
   variant: "A" | "B";
-  vw: number;
-  vh: number;
-  /** gpt-image-2 generated design background (text-free) */
-  backgroundImage: string;
-  elements: IGElement[];
+  image: string;
 }
 
 export interface DesignReq {
-  diagnosis: string;
+  content: InfographicContent;
+  language: string;
 }
 
 export interface DesignRes {
   imageA: string;
   imageB: string;
+}
+
+export interface EditReq {
+  image: string;
+  prompt: string;
+}
+
+export interface EditRes {
+  image: string;
 }
 
 export interface GenerateReq {
@@ -106,4 +55,16 @@ export interface FillReq {
 
 export interface FillRes {
   instructions: string;
+}
+
+export interface InfographicPreset {
+  id: string;
+  label: string;
+  prompt: string;
+}
+
+export interface PresetGroup {
+  id: "theme" | "language" | "audience";
+  label: string;
+  presets: InfographicPreset[];
 }

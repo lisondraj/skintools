@@ -4,20 +4,29 @@ import type { DesignReq, DesignRes } from "@/lib/infographic/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as DesignReq;
 
-    if (!body.diagnosis?.trim()) {
+    if (!body.content?.title?.trim()) {
       return NextResponse.json(
-        { error: "Diagnosis is required." },
+        { error: "Content is required." },
+        { status: 400 },
+      );
+    }
+
+    if (!body.language?.trim()) {
+      return NextResponse.json(
+        { error: "Language is required." },
         { status: 400 },
       );
     }
 
     const { imageA, imageB } = await generateBothDesignImages(
-      body.diagnosis.trim(),
+      body.content,
+      body.language.trim(),
     );
 
     return NextResponse.json({ imageA, imageB } satisfies DesignRes);

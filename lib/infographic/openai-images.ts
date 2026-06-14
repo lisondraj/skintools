@@ -1,6 +1,7 @@
 import { getOpenAiKey } from "@/lib/skinlog/env";
+import type { InfographicContent } from "./types";
+import { flattenContent } from "./utils";
 
-/** Infographic designs always use GPT Image 2 by default. */
 const DEFAULT_INFOGRAPHIC_IMAGE_MODEL = "gpt-image-2";
 
 export function getInfographicImageModel(): string {
@@ -10,26 +11,60 @@ export function getInfographicImageModel(): string {
   );
 }
 
-const SHARED_LAYOUT = `
-Portrait patient education poster, 2:3 aspect ratio. Layout MUST follow these exact horizontal zones top to bottom:
-1) Top header band (~15% height): decorative header area with light/white empty space for a title overlay.
-2) Key-facts strip (~6% height): three small empty pill/chip placeholders in a row.
-3) Four evenly spaced content panels (~55% total): each panel is a clear rectangular card with generous light empty interior for text overlay.
-4) Optional warning band (~8% height): one horizontal alert card with light empty interior.
-5) Bottom footer band (~8% height): light empty strip for disclaimer text.
+function dataUrlToArrayBuffer(dataUrl: string): ArrayBuffer {
+  const match = dataUrl.match(/^data:(.+);base64,(.+)$/);
+  if (!match) throw new Error("Invalid image data URL.");
+  const buf = Buffer.from(match[2], "base64");
+  const copy = new Uint8Array(buf.length);
+  copy.set(buf);
+  return copy.buffer;
+}
 
-CRITICAL: Absolutely NO text, words, letters, numbers, labels, captions, watermarks, or typography anywhere in the image. Design and decorative graphics only.
-`;
+function mimeFromDataUrl(dataUrl: string): string {
+  const match = dataUrl.match(/^data:([^;]+);/);
+  return match?.[1] ?? "image/jpeg";
+}
 
-const STYLE_PROMPTS: Record<"A" | "B", string> = {
-  A: `Clinical professional medical infographic background design. Deep navy blue and soft ice-blue color palette. Clean horizontal bands, subtle abstract medical motifs in corners (cross, heartbeat line, molecule shapes — decorative only). White and pale blue empty zones in each layout band. Polished hospital-grade poster aesthetic. ${SHARED_LAYOUT}`,
+function extensionForMime(mime: string): string {
+  if (mime.includes("jpeg") || mime.includes("jpg")) return "jpeg";
+  if (mime.includes("webp")) return "webp";
+  return "png";
+}
 
-  B: `Modern friendly patient infographic background design. Teal, mint green, and soft white color palette. Soft organic rounded shapes, airy whitespace, gentle gradient accents. Rounded card panels with subtle shadows. Warm approachable wellness aesthetic. ${SHARED_LAYOUT}`,
+function toJpegDataUrl(b64: string): string {
+  return `data:image/jpeg;base64,${b64}`;
+}
+
+const STYLE_INTROS: Record<"A" | "B", string> = {
+  A: `Create a complete patient education infographic poster. Style A — Clinical professional: deep navy blue and ice-blue palette, clean horizontal bands, subtle medical decorative motifs, polished hospital-grade aesthetic. Portrait 2:3 aspect ratio.`,
+
+  B: `Create a complete patient education infographic poster. Style B — Modern friendly: teal, mint green, and soft white palette, organic rounded shapes, airy whitespace, warm approachable wellness aesthetic. Portrait 2:3 aspect ratio.`,
 };
+
+function buildInfographicPrompt(
+  style: "A" | "B",
+  content: InfographicContent,
+  language: string,
+): string {
+  const textBlock = flattenContent(content, language);
+
+  return `${STYLE_INTROS[style]}
+
+Render ALL of the following text directly in the infographic image — title, facts, section headings, section bodies, warning, and footer. Text must be clearly legible, well-typeset, and integrated into the design layout. Use a professional infographic layout with header, key-facts row, 4 content sections, optional warning band, and footer.
+
+${textBlock}
+
+Rules:
+- Every word above must appear in the image
+- Plain-language patient education tone
+- No watermarks or placeholder text
+- Professional medical education quality`;
+}
 
 export async function generateDesignImage(
   style: "A" | "B",
-  diagnosis: string,
+  content: InfographicContent,
+  language: string,
 ): Promise<string> {
   const apiKey = getOpenAiKey();
   if (!apiKey) {
@@ -38,7 +73,7 @@ export async function generateDesignImage(
     );
   }
 
-  const prompt = `${STYLE_PROMPTS[style]} Topic context (visual mood only, do not write this as text): ${diagnosis}.`;
+  const prompt = buildInfographicPrompt(style, content, language);
 
   const response = await fetch("https://api.openai.com/v1/images/generations", {
     method: "POST",
@@ -69,15 +104,65 @@ export async function generateDesignImage(
 
   const b64 = data.data?.[0]?.b64_json;
   if (!b64) throw new Error("OpenAI returned no design image data.");
-  return `data:image/jpeg;base64,${b64}`;
+  return toJpegDataUrl(b64);
 }
 
 export async function generateBothDesignImages(
-  diagnosis: string,
+  content: InfographicContent,
+  language: string,
 ): Promise<{ imageA: string; imageB: string }> {
   const [imageA, imageB] = await Promise.all([
-    generateDesignImage("A", diagnosis),
-    generateDesignImage("B", diagnosis),
+    generateDesignImage("A", content, language),
+    generateDesignImage("B", content, language),
   ]);
   return { imageA, imageB };
+}
+
+export async function editDesignImage(
+  image: string,
+  prompt: string,
+): Promise<string> {
+  const apiKey = getOpenAiKey();
+  if (!apiKey) {
+    throw new Error(
+      "OpenAI API key not found. Add OPENAI_API_KEY in Vercel Environment Variables.",
+    );
+  }
+
+  const imageMime = mimeFromDataUrl(image);
+  const form = new FormData();
+  form.append("model", getInfographicImageModel());
+  form.append("prompt", prompt);
+  form.append("size", "1024x1536");
+  form.append("quality", "high");
+  form.append("output_format", "jpeg");
+  form.append("output_compression", "85");
+  form.append(
+    "image",
+    new Blob([dataUrlToArrayBuffer(image)], { type: imageMime }),
+    `image.${extensionForMime(imageMime)}`,
+  );
+
+  const response = await fetch("https://api.openai.com/v1/images/edits", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: form,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `OpenAI edit failed (${response.status}): ${errorText}`,
+    );
+  }
+
+  const data = (await response.json()) as {
+    data?: Array<{ b64_json?: string }>;
+  };
+
+  const b64 = data.data?.[0]?.b64_json;
+  if (!b64) throw new Error("OpenAI returned no edited image.");
+  return toJpegDataUrl(b64);
 }

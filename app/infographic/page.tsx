@@ -2,9 +2,7 @@
 
 import Link from "next/link";
 import { useState, useRef } from "react";
-import type { InfographicContent, InfographicDoc } from "@/lib/infographic/types";
-import { buildTemplateA, buildTemplateB } from "@/lib/infographic/templates";
-import { InfographicSVG } from "@/components/infographic/InfographicSVG";
+import type { InfographicContent, InfographicDesign } from "@/lib/infographic/types";
 import { InfographicEditor } from "@/components/infographic/InfographicEditor";
 import "./infographic.css";
 
@@ -25,9 +23,9 @@ export default function InfographicPage() {
   const [filling, setFilling] = useState(false);
 
   const [content, setContent] = useState<InfographicContent | null>(null);
-  const [docA, setDocA] = useState<InfographicDoc | null>(null);
-  const [docB, setDocB] = useState<InfographicDoc | null>(null);
-  const [activeDoc, setActiveDoc] = useState<InfographicDoc | null>(null);
+  const [designA, setDesignA] = useState<InfographicDesign | null>(null);
+  const [designB, setDesignB] = useState<InfographicDesign | null>(null);
+  const [activeDesign, setActiveDesign] = useState<InfographicDesign | null>(null);
 
   const [generatingPhase, setGeneratingPhase] = useState<
     "content" | "designs" | null
@@ -102,7 +100,7 @@ export default function InfographicPage() {
       const designRes = await fetch("/api/infographic/design", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ diagnosis: diagnosis.trim() }),
+        body: JSON.stringify({ content: generatedContent, language: lang }),
       });
 
       const designData = (await designRes.json()) as {
@@ -118,13 +116,10 @@ export default function InfographicPage() {
         return;
       }
 
-      const a = buildTemplateA(generatedContent, designData.imageA!);
-      const b = buildTemplateB(generatedContent, designData.imageB!);
-
       setContent(generatedContent);
-      setDocA(a);
-      setDocB(b);
-      setActiveDoc(null);
+      setDesignA({ variant: "A", image: designData.imageA! });
+      setDesignB({ variant: "B", image: designData.imageB! });
+      setActiveDesign(null);
       setGeneratingPhase(null);
       setStep("preview");
     } catch {
@@ -134,28 +129,28 @@ export default function InfographicPage() {
     }
   }
 
-  function handleSelectTemplate(doc: InfographicDoc) {
-    setActiveDoc(doc);
+  function handleSelectDesign(design: InfographicDesign) {
+    setActiveDesign(design);
     setStep("editor");
   }
 
   function handleBack() {
     setStep("preview");
-    setActiveDoc(null);
+    setActiveDesign(null);
   }
 
   function handleRegenerate() {
     setStep("input");
-    setActiveDoc(null);
-    setDocA(null);
-    setDocB(null);
+    setActiveDesign(null);
+    setDesignA(null);
+    setDesignB(null);
     setContent(null);
   }
 
-  if (step === "editor" && activeDoc) {
+  if (step === "editor" && activeDesign) {
     return (
       <div className="skinlog__inner ig-shell">
-        <InfographicEditor doc={activeDoc} onBack={handleBack} />
+        <InfographicEditor design={activeDesign} onBack={handleBack} />
       </div>
     );
   }
@@ -174,7 +169,7 @@ export default function InfographicPage() {
             <h1 className="skinlog__title">Patient education, made simple.</h1>
             <p className="skinlog__lead">
               Enter a diagnosis and optional instructions. AI generates two
-              infographic designs — pick one, edit the text, and export.
+              complete infographics — pick one, refine with prompts, and export.
             </p>
 
             {error && <div className="skinlog__error">{error}</div>}
@@ -306,7 +301,7 @@ export default function InfographicPage() {
                 <span className="ig-steps__num">03</span>
                 <span>
                   <strong>Edit and export</strong>
-                  Adjust text overlays, save as PNG or SVG
+                  Refine with prompts or presets, save as PNG
                 </span>
               </li>
             </ol>
@@ -318,7 +313,7 @@ export default function InfographicPage() {
           </>
         )}
 
-        {step === "preview" && docA && docB && (
+        {step === "preview" && designA && designB && (
           <div className="ig-preview">
             <h1 className="skinlog__title">Choose a style</h1>
             <p className="skinlog__lead ig-preview__lead">
@@ -337,16 +332,21 @@ export default function InfographicPage() {
             )}
 
             <div className="ig-templates">
-              {([docA, docB] as InfographicDoc[]).map((doc) => (
+              {([designA, designB] as InfographicDesign[]).map((design) => (
                 <button
-                  key={doc.variant}
+                  key={design.variant}
                   type="button"
                   className="ig-template-card"
-                  onClick={() => handleSelectTemplate(doc)}
-                  aria-label={`Select style ${doc.variant}`}
+                  onClick={() => handleSelectDesign(design)}
+                  aria-label={`Select style ${design.variant}`}
                 >
-                  <div className="ig-template-card__label">Style {doc.variant}</div>
-                  <InfographicSVG doc={doc} className="ig-template-card__svg" />
+                  <div className="ig-template-card__label">Style {design.variant}</div>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={design.image}
+                    alt={`Infographic style ${design.variant}`}
+                    className="ig-template-card__img"
+                  />
                   <div className="ig-template-card__cta">Edit this style</div>
                 </button>
               ))}
