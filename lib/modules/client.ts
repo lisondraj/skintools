@@ -20,11 +20,11 @@ export async function autofillText(req: AutofillReq): Promise<string> {
 
 export async function createRealtimeSession(
   req: RealtimeSessionReq,
-): Promise<RealtimeSessionRes> {
+): Promise<RealtimeSessionRes & { instructions: string }> {
   const response = await fetch("/api/modules/realtime-session", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(req),
   });
-  return parseJson<RealtimeSessionRes>(response);
+  return parseJson<RealtimeSessionRes & { instructions: string }>(response);
 }

@@ -1,22 +1,33 @@
 import { NextResponse } from "next/server";
-import { getOpenAiKey } from "@/lib/skinlog/env";
-import {
-  buildPatientInstructions,
-  getDefaultRealtimeVoice,
-  getRealtimeModel,
-} from "@/lib/modules/realtime";
+import { buildPatientInstructions } from "@/lib/modules/realtime";
 import type { RealtimeSessionReq, RealtimeSessionRes } from "@/lib/modules/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
+function getElevenLabsKey(): string | undefined {
+  return process.env["ELEVENLABS_API_KEY"]?.trim() || undefined;
+}
+
+function getElevenLabsAgentId(): string | undefined {
+  return process.env["ELEVENLABS_AGENT_ID"]?.trim() || undefined;
+}
+
 export async function POST(request: Request) {
   try {
-    const apiKey = getOpenAiKey();
+    const apiKey = getElevenLabsKey();
     if (!apiKey) {
       return NextResponse.json(
-        { error: "OpenAI API key not configured." },
+        { error: "ElevenLabs API key not configured. Add ELEVENLABS_API_KEY to environment variables." },
+        { status: 500 },
+      );
+    }
+
+    const agentId = getElevenLabsAgentId();
+    if (!agentId) {
+      return NextResponse.json(
+        { error: "ElevenLabs agent not configured. Add ELEVENLABS_AGENT_ID to environment variables." },
         { status: 500 },
       );
     }
@@ -29,65 +40,44 @@ export async function POST(request: Request) {
       );
     }
 
-    const model = getRealtimeModel();
-    const voice = body.sim.voice?.trim() || getDefaultRealtimeVoice();
     const instructions = buildPatientInstructions(body.sim);
+    const voiceId = body.sim.voice?.trim() || "cgSgspJ2msm6clMCkdW9";
 
-    const response = await fetch("https://api.openai.com/v1/realtime/client_secrets", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
+    // Get a signed URL from ElevenLabs for this session
+    const signedUrlRes = await fetch(
+      `https://api.elevenlabs.io/v1/convai/conversation/get-signed-url?agent_id=${encodeURIComponent(agentId)}`,
+      {
+        method: "GET",
+        headers: { "xi-api-key": apiKey },
       },
-      body: JSON.stringify({
-        expires_after: {
-          anchor: "created_at",
-          seconds: 600,
-        },
-        session: {
-          type: "realtime",
-          model,
-          instructions,
-          audio: {
-            input: {
-              transcription: { model: "whisper-1" },
-            },
-            output: { voice },
-          },
-        },
-      }),
-    });
+    );
 
-    if (!response.ok) {
-      const errorText = await response.text();
+    if (!signedUrlRes.ok) {
+      const errText = await signedUrlRes.text();
       return NextResponse.json(
-        { error: `Realtime session failed (${response.status}): ${errorText}` },
+        { error: `ElevenLabs signed URL failed (${signedUrlRes.status}): ${errText}` },
         { status: 500 },
       );
     }
 
-    const data = (await response.json()) as {
-      value?: string;
-      expires_at?: number;
-      session?: { model?: string };
-    };
-
-    const clientSecret = data.value;
-    if (!clientSecret) {
+    const signedUrlData = (await signedUrlRes.json()) as { signed_url?: string };
+    const signedUrl = signedUrlData.signed_url;
+    if (!signedUrl) {
       return NextResponse.json(
-        { error: "No client secret returned from OpenAI." },
+        { error: "No signed URL returned from ElevenLabs." },
         { status: 500 },
       );
     }
 
+    // Encode persona override so the client can send it after connection
     return NextResponse.json({
-      clientSecret,
-      model: data.session?.model ?? model,
-      expiresAt: data.expires_at,
-    } satisfies RealtimeSessionRes);
+      signedUrl,
+      voiceId,
+      // Pass instructions back so the client can send the override message
+      instructions,
+    } satisfies RealtimeSessionRes & { instructions: string });
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Realtime session failed.";
+    const message = err instanceof Error ? err.message : "Session creation failed.";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

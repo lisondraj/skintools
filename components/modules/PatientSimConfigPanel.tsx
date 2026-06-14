@@ -1,7 +1,7 @@
 "use client";
 
 import type { PatientSimConfig, Slide } from "@/lib/modules/types";
-import { REALTIME_VOICES } from "@/lib/modules/types";
+import { ELEVENLABS_VOICES } from "@/lib/modules/types";
 
 type Props = {
   sim?: PatientSimConfig;
@@ -12,7 +12,7 @@ export function PatientSimConfigPanel({ sim, onChange }: Props) {
   const config = sim ?? {
     persona: "",
     scenario: "",
-    voice: "alloy",
+    voice: ELEVENLABS_VOICES[0].id,
     difficulty: "moderate" as const,
   };
 
@@ -52,9 +52,9 @@ export function PatientSimConfigPanel({ sim, onChange }: Props) {
             value={config.voice}
             onChange={(e) => onChange({ voice: e.target.value })}
           >
-            {REALTIME_VOICES.map((voice) => (
-              <option key={voice} value={voice}>
-                {voice}
+            {ELEVENLABS_VOICES.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.label}
               </option>
             ))}
           </select>
@@ -91,7 +91,7 @@ export function PatientSimSlidePreview({ slide }: { slide: Slide }) {
       <h3>Virtual patient simulation</h3>
       <p>{sim?.persona || "Patient persona not set"}</p>
       <p className="modules-sim-preview__meta">
-        Voice: {sim?.voice || "alloy"} · {sim?.difficulty || "moderate"}
+        Voice: {ELEVENLABS_VOICES.find((v) => v.id === sim?.voice)?.label ?? sim?.voice ?? "Jessica"} · {sim?.difficulty || "moderate"}
       </p>
     </div>
   );

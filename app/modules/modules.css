@@ -478,26 +478,54 @@
   font-size: 12px !important;
 }
 
+/* ── Speaking orb ──────────────────────────────────────────────── */
+.sim-orb-wrap {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sim-orb-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1.5px solid #6366f1;
+  transition: transform 0.08s ease, opacity 0.08s ease, border-color 0.3s ease;
+  pointer-events: none;
+}
+
+.sim-orb-core {
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  transition: transform 0.07s ease, opacity 0.1s ease, box-shadow 0.07s ease;
+}
+
 /* Sim runner */
 .modules-sim-runner {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
-  padding: 40px 24px;
+  gap: 18px;
+  padding: 36px 24px 40px;
   text-align: center;
 }
 
 .modules-sim-runner__status-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .modules-sim-runner__dot {
   flex-shrink: 0;
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.15);
 }
@@ -513,21 +541,25 @@
 }
 
 .modules-sim-runner__dot--speaking {
-  background: #3b82f6;
-  animation: modules-sim-pulse 0.6s ease-in-out infinite;
+  background: #6366f1;
+  animation: modules-sim-pulse 0.5s ease-in-out infinite;
 }
 
 .modules-sim-runner__dot--error {
   background: #ef4444;
 }
 
+.modules-sim-runner__dot--ended {
+  background: rgba(0, 0, 0, 0.2);
+}
+
 @keyframes modules-sim-pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.6; transform: scale(0.85); }
+  50% { opacity: 0.5; transform: scale(0.8); }
 }
 
 .modules-sim-runner__status-text {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 500;
   color: var(--modules-text);
 }
@@ -547,20 +579,48 @@
 
 .modules-sim-runner__transcript {
   width: 100%;
-  max-width: 520px;
-  max-height: 160px;
+  max-width: 560px;
+  max-height: 200px;
   overflow-y: auto;
   text-align: left;
-  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
   border: 1px solid var(--modules-border);
-  border-radius: 8px;
+  border-radius: 10px;
   background: #fafafa;
 }
 
-.modules-sim-runner__transcript p {
-  margin: 0 0 8px;
+.modules-sim-runner__line {
+  margin: 0;
   font-size: 13px;
-  line-height: 1.45;
+  line-height: 1.5;
+  color: var(--modules-text);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.modules-sim-runner__line-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.45;
+  display: block;
+}
+
+.modules-sim-runner__line--patient {
+  color: #4f46e5;
+}
+
+.modules-sim-runner__line--patient .modules-sim-runner__line-label {
+  color: #4f46e5;
+  opacity: 0.7;
+}
+
+.modules-sim-runner__line--you {
   color: var(--modules-muted);
 }
 
@@ -569,6 +629,10 @@
   gap: 10px;
   flex-wrap: wrap;
   justify-content: center;
+}
+
+.modules-btn.is-active {
+  background: rgba(0, 0, 0, 0.08);
 }
 
 /* Modal / library */

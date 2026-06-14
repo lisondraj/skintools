@@ -77,9 +77,8 @@ export interface RealtimeSessionReq {
 }
 
 export interface RealtimeSessionRes {
-  clientSecret: string;
-  model: string;
-  expiresAt?: number;
+  signedUrl: string;
+  voiceId: string;
 }
 
 export const DEFAULT_PATIENT_SIM: PatientSimConfig = {
@@ -90,13 +89,19 @@ export const DEFAULT_PATIENT_SIM: PatientSimConfig = {
   difficulty: "moderate",
 };
 
-export const REALTIME_VOICES = [
-  "alloy",
-  "ash",
-  "ballad",
-  "coral",
-  "echo",
-  "sage",
-  "shimmer",
-  "verse",
-] as const;
+/** ElevenLabs pre-built voices available for ConvAI agents. */
+export interface ElevenLabsVoice {
+  id: string;
+  label: string;
+}
+
+export const ELEVENLABS_VOICES: ElevenLabsVoice[] = [
+  { id: "cgSgspJ2msm6clMCkdW9", label: "Jessica (conversational)" },
+  { id: "iP95p4xoKVk53GoZ742B", label: "Chris (professional)" },
+  { id: "9BWtsMINqrJLrRacOk9x", label: "Aria (warm)" },
+  { id: "XB0fDUnXU5powFXDhCwa", label: "Charlotte (empathetic)" },
+  { id: "nPczCjzI2devNBz1zQrb", label: "Brian (calm)" },
+  { id: "pqHfZKP75CvOlQylNhV4", label: "Bill (authoritative)" },
+  { id: "bIHbv24MWmeRgasZH58o", label: "Will (friendly)" },
+  { id: "EXAVITQu4vr4xnSDxMaL", label: "Bella (soothing)" },
+];
