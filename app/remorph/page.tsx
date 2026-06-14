@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { ImageStage } from "@/components/remorph/ImageStage";
 import { PromptBar } from "@/components/remorph/PromptBar";
-import type { MaskCanvasHandle } from "@/components/remorph/MaskCanvas";
+import type { FeatureSelectHandle } from "@/components/remorph/FeatureSelectCanvas";
 import { editImage, generateImage } from "@/lib/remorph/client";
 import { normalizeToStage, readFileAsDataUrl } from "@/lib/remorph/image-utils";
 
@@ -13,14 +13,15 @@ export default function RemorphPage() {
   const [prompt, setPrompt] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [brushSize, setBrushSize] = useState(36);
-  const [brushMode, setBrushMode] = useState<"paint" | "erase">("paint");
+  const [tolerance, setTolerance] = useState(50);
+  const [hasSelection, setHasSelection] = useState(false);
 
-  const maskRef = useRef<MaskCanvasHandle>(null);
+  const selectRef = useRef<FeatureSelectHandle>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const clearMask = useCallback(() => {
-    maskRef.current?.clear();
+  const clearSelection = useCallback(() => {
+    selectRef.current?.clear();
+    setHasSelection(false);
   }, []);
 
   const handleUpload = useCallback(
@@ -32,7 +33,7 @@ export default function RemorphPage() {
         const normalized = await normalizeToStage(dataUrl);
         setPreviousImage(null);
         setImage(normalized);
-        clearMask();
+        clearSelection();
       } catch (uploadError) {
         setError(
           uploadError instanceof Error
@@ -43,7 +44,7 @@ export default function RemorphPage() {
         setBusy(false);
       }
     },
-    [clearMask],
+    [clearSelection],
   );
 
   const handleGenerate = useCallback(async () => {
@@ -57,7 +58,7 @@ export default function RemorphPage() {
       const normalized = await normalizeToStage(generated);
       setPreviousImage(null);
       setImage(normalized);
-      clearMask();
+      clearSelection();
     } catch (generateError) {
       setError(
         generateError instanceof Error
@@ -67,7 +68,7 @@ export default function RemorphPage() {
     } finally {
       setBusy(false);
     }
-  }, [clearMask, prompt]);
+  }, [clearSelection, prompt]);
 
   const handleEdit = useCallback(async () => {
     if (!image) return;
@@ -77,7 +78,7 @@ export default function RemorphPage() {
     setError(null);
     setBusy(true);
     try {
-      const { mask } = maskRef.current?.exportMask() ?? { mask: null };
+      const { mask } = selectRef.current?.exportMask() ?? { mask: null };
       const edited = await editImage({
         image,
         mask: mask ?? undefined,
@@ -86,7 +87,7 @@ export default function RemorphPage() {
       const normalized = await normalizeToStage(edited);
       setPreviousImage(image);
       setImage(normalized);
-      clearMask();
+      clearSelection();
     } catch (editError) {
       setError(
         editError instanceof Error ? editError.message : "Edit failed.",
@@ -94,15 +95,15 @@ export default function RemorphPage() {
     } finally {
       setBusy(false);
     }
-  }, [clearMask, image, prompt]);
+  }, [clearSelection, image, prompt]);
 
   const handleUndo = useCallback(() => {
     if (!previousImage) return;
     setImage(previousImage);
     setPreviousImage(null);
-    clearMask();
+    clearSelection();
     setError(null);
-  }, [clearMask, previousImage]);
+  }, [clearSelection, previousImage]);
 
   const handleSubmit = image ? handleEdit : handleGenerate;
 
@@ -111,7 +112,7 @@ export default function RemorphPage() {
       <header className="remorph__header">
         <h1 className="remorph__logo">Remorph</h1>
         <p className="remorph__tagline">
-          Paint a region, prompt an edit — everything else stays the same.
+          Select a feature, prompt an edit — everything else stays the same.
         </p>
       </header>
 
@@ -119,11 +120,11 @@ export default function RemorphPage() {
         <div className="remorph__stage-wrap">
           {image ? (
             <ImageStage
-              ref={maskRef}
+              ref={selectRef}
               image={image}
-              brushSize={brushSize}
-              brushMode={brushMode}
+              tolerance={tolerance}
               disabled={busy}
+              onSelectionChange={setHasSelection}
             />
           ) : (
             <div className="remorph__stage-empty">
@@ -189,12 +190,11 @@ export default function RemorphPage() {
             onPromptChange={setPrompt}
             onSubmit={() => void handleSubmit()}
             busy={busy}
-            brushSize={brushSize}
-            onBrushSizeChange={setBrushSize}
-            brushMode={brushMode}
-            onBrushModeChange={setBrushMode}
-            onClearMask={clearMask}
+            tolerance={tolerance}
+            onToleranceChange={setTolerance}
+            onClearSelection={clearSelection}
             hasImage={Boolean(image)}
+            hasSelection={hasSelection}
           />
         </div>
       </div>

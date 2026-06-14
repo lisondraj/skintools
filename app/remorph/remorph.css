@@ -172,27 +172,15 @@
   margin: 0;
 }
 
-.remorph__tool-row {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.remorph__tool-btn {
-  flex: 1;
-  padding: 8px 10px;
-  border: 1px solid var(--remorph-border);
-  border-radius: 8px;
-  background: #ffffff;
-  font-family: inherit;
+.remorph__selection-status {
+  margin: 10px 0 0;
   font-size: 13px;
-  cursor: pointer;
+  line-height: 1.45;
+  color: var(--remorph-muted);
 }
 
-.remorph__tool-btn.is-active {
-  background: var(--remorph-accent);
-  color: #ffffff;
-  border-color: var(--remorph-accent);
+.remorph__selection-status.is-active {
+  color: #8f2018;
 }
 
 .remorph__error {
@@ -242,7 +230,7 @@
   pointer-events: none;
 }
 
-.remorph-stage__mask {
+.remorph-stage__select {
   position: absolute;
   inset: 0;
   width: 100%;

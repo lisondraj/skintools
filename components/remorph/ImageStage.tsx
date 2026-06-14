@@ -1,26 +1,33 @@
 "use client";
 
 import { forwardRef } from "react";
-import { MaskCanvas, type MaskCanvasHandle } from "@/components/remorph/MaskCanvas";
+import {
+  FeatureSelectCanvas,
+  type FeatureSelectHandle,
+} from "@/components/remorph/FeatureSelectCanvas";
 
 type ImageStageProps = {
   image: string;
-  brushSize: number;
-  brushMode: "paint" | "erase";
+  tolerance: number;
   disabled?: boolean;
+  onSelectionChange?: (hasSelection: boolean) => void;
 };
 
-export const ImageStage = forwardRef<MaskCanvasHandle, ImageStageProps>(
-  function ImageStage({ image, brushSize, brushMode, disabled = false }, ref) {
+export const ImageStage = forwardRef<FeatureSelectHandle, ImageStageProps>(
+  function ImageStage(
+    { image, tolerance, disabled = false, onSelectionChange },
+    ref,
+  ) {
     return (
       <div className="remorph-stage">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={image} alt="Current image" className="remorph-stage__image" />
-        <MaskCanvas
+        <FeatureSelectCanvas
           ref={ref}
-          brushSize={brushSize}
-          brushMode={brushMode}
+          image={image}
+          tolerance={tolerance}
           disabled={disabled}
+          onSelectionChange={onSelectionChange}
         />
       </div>
     );

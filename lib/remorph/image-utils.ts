@@ -1,5 +1,7 @@
 import { REMORPH_STAGE_SIZE } from "@/lib/remorph/types";
 
+export const REMORPH_WORK_SIZE = 256;
+
 export function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -7,6 +9,129 @@ export function loadImage(src: string): Promise<HTMLImageElement> {
     img.onerror = () => reject(new Error("Could not load image."));
     img.src = src;
   });
+}
+
+/** Map slider value (0–100) to RGB distance threshold. */
+export function toleranceToThreshold(tolerance: number): number {
+  return 5 + (tolerance / 100) * 175;
+}
+
+/** Draw image to a square canvas and return pixel data. */
+export async function getStagePixels(
+  image: string,
+  workSize = REMORPH_WORK_SIZE,
+): Promise<ImageData> {
+  const img = await loadImage(image);
+  const canvas = document.createElement("canvas");
+  canvas.width = workSize;
+  canvas.height = workSize;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Could not read image pixels.");
+  ctx.drawImage(img, 0, 0, workSize, workSize);
+  return ctx.getImageData(0, 0, workSize, workSize);
+}
+
+/** Select all pixels globally within color distance of the target pixel. */
+export function selectSimilar(
+  pixels: ImageData,
+  pixelIndex: number,
+  tolerance: number,
+): Uint8Array {
+  const { width, height, data } = pixels;
+  const total = width * height;
+  const selection = new Uint8Array(total);
+  const base = pixelIndex * 4;
+  const tr = data[base];
+  const tg = data[base + 1];
+  const tb = data[base + 2];
+  const thresholdSq = toleranceToThreshold(tolerance) ** 2;
+
+  for (let i = 0; i < total; i++) {
+    const pi = i * 4;
+    const dr = data[pi] - tr;
+    const dg = data[pi + 1] - tg;
+    const db = data[pi + 2] - tb;
+    if (dr * dr + dg * dg + db * db <= thresholdSq) {
+      selection[i] = 1;
+    }
+  }
+
+  return selection;
+}
+
+function dilateSelection(
+  selection: Uint8Array,
+  width: number,
+  height: number,
+  radius = 1,
+): Uint8Array {
+  const out = new Uint8Array(selection);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = y * width + x;
+      if (selection[i]) continue;
+      outer: for (let dy = -radius; dy <= radius; dy++) {
+        for (let dx = -radius; dx <= radius; dx++) {
+          const nx = x + dx;
+          const ny = y + dy;
+          if (
+            nx >= 0 &&
+            nx < width &&
+            ny >= 0 &&
+            ny < height &&
+            selection[ny * width + nx]
+          ) {
+            out[i] = 1;
+            break outer;
+          }
+        }
+      }
+    }
+  }
+  return out;
+}
+
+/** OpenAI mask: transparent = edit, opaque = preserve. */
+export function buildMaskFromSelection(
+  selection: Uint8Array,
+  selWidth: number,
+  selHeight: number,
+  outputSize = REMORPH_STAGE_SIZE,
+): { mask: string; hasSelection: boolean } {
+  let hasSelection = false;
+  for (let i = 0; i < selection.length; i++) {
+    if (selection[i]) {
+      hasSelection = true;
+      break;
+    }
+  }
+
+  const dilated = dilateSelection(selection, selWidth, selHeight, 1);
+  const maskCanvas = document.createElement("canvas");
+  maskCanvas.width = outputSize;
+  maskCanvas.height = outputSize;
+  const maskCtx = maskCanvas.getContext("2d");
+  if (!maskCtx) throw new Error("Could not build mask.");
+
+  const maskData = maskCtx.createImageData(outputSize, outputSize);
+  const scaleX = selWidth / outputSize;
+  const scaleY = selHeight / outputSize;
+
+  for (let y = 0; y < outputSize; y++) {
+    for (let x = 0; x < outputSize; x++) {
+      const sx = Math.min(selWidth - 1, Math.floor(x * scaleX));
+      const sy = Math.min(selHeight - 1, Math.floor(y * scaleY));
+      const selected = dilated[sy * selWidth + sx] === 1;
+      const oi = (y * outputSize + x) * 4;
+      maskData.data[oi] = 0;
+      maskData.data[oi + 1] = 0;
+      maskData.data[oi + 2] = 0;
+      maskData.data[oi + 3] = selected ? 0 : 255;
+    }
+  }
+
+  maskCtx.putImageData(maskData, 0, 0);
+  return { mask: maskCanvas.toDataURL("image/png"), hasSelection };
 }
 
 /** Fit image onto a square stage with neutral padding (contain). */
@@ -41,35 +166,4 @@ export function readFileAsDataUrl(file: File): Promise<string> {
     reader.onerror = () => reject(new Error("Could not read file."));
     reader.readAsDataURL(file);
   });
-}
-
-/** OpenAI mask: transparent = edit, opaque = preserve. */
-export function buildEditMaskFromBrush(
-  brushCanvas: HTMLCanvasElement,
-  size = REMORPH_STAGE_SIZE,
-): { mask: string; hasPaint: boolean } {
-  const brushCtx = brushCanvas.getContext("2d");
-  if (!brushCtx) throw new Error("Could not read brush layer.");
-
-  const maskCanvas = document.createElement("canvas");
-  maskCanvas.width = size;
-  maskCanvas.height = size;
-  const maskCtx = maskCanvas.getContext("2d");
-  if (!maskCtx) throw new Error("Could not build mask.");
-
-  const brushData = brushCtx.getImageData(0, 0, size, size);
-  const maskData = maskCtx.createImageData(size, size);
-
-  let hasPaint = false;
-  for (let i = 0; i < brushData.data.length; i += 4) {
-    const painted = brushData.data[i + 3] > 8;
-    if (painted) hasPaint = true;
-    maskData.data[i] = 0;
-    maskData.data[i + 1] = 0;
-    maskData.data[i + 2] = 0;
-    maskData.data[i + 3] = painted ? 0 : 255;
-  }
-
-  maskCtx.putImageData(maskData, 0, 0);
-  return { mask: maskCanvas.toDataURL("image/png"), hasPaint };
 }

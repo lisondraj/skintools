@@ -35,7 +35,7 @@ export async function generateLesionImage(userPrompt: string): Promise<string> {
       model: getImageModel(),
       prompt,
       size: "1024x1024",
-      quality: "high",
+      quality: "medium",
     }),
   });
 
