@@ -57,18 +57,20 @@
 }
 
 .remorph__workspace--entry {
+  grid-template-columns: 1fr;
   overflow-x: auto;
 }
 
-.remorph__stage-wrap--entry {
-  aspect-ratio: auto;
-  width: calc(var(--remorph-stage-size) * 3 + 24px);
-  height: var(--remorph-stage-size);
+.remorph-entry-area {
+  position: relative;
+  width: fit-content;
   min-width: calc(var(--remorph-stage-size) * 3 + 24px);
-  margin: 0;
-  overflow: visible;
-  background: transparent;
-  border-color: transparent;
+  max-width: 100%;
+}
+
+.remorph-entry-area.is-drop-target .remorph-entry__box--drop {
+  border-color: #7ec8f0;
+  background: rgba(126, 200, 240, 0.08);
 }
 
 .remorph-entry {
@@ -76,7 +78,7 @@
   gap: 12px;
   align-items: flex-start;
   width: fit-content;
-  height: 100%;
+  min-width: calc(var(--remorph-stage-size) * 3 + 24px);
 }
 
 .remorph-entry__box {
@@ -87,7 +89,9 @@
   gap: 10px;
   flex: 0 0 var(--remorph-stage-size);
   width: var(--remorph-stage-size);
+  min-width: var(--remorph-stage-size);
   height: var(--remorph-stage-size);
+  min-height: var(--remorph-stage-size);
   padding: 20px;
   border: 1px dashed var(--remorph-border);
   border-radius: var(--remorph-radius);
@@ -97,6 +101,21 @@
   text-align: center;
   cursor: pointer;
   box-sizing: border-box;
+}
+
+.remorph-entry-prompt {
+  width: calc(var(--remorph-stage-size) * 3 + 24px);
+  margin-top: 16px;
+}
+
+.remorph-entry-prompt__hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--remorph-muted);
+}
+
+.remorph-entry-area .remorph__drop-overlay {
+  border-radius: var(--remorph-radius);
 }
 
 .remorph-entry__box:hover:not(:disabled) {
