@@ -52,7 +52,7 @@
 }
 
 .remorph__workspace--split {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.9fr);
   overflow-x: auto;
 }
 
@@ -64,8 +64,11 @@
   aspect-ratio: auto;
   width: calc(var(--remorph-stage-size) * 3 + 24px);
   height: var(--remorph-stage-size);
+  min-width: calc(var(--remorph-stage-size) * 3 + 24px);
   margin: 0;
   overflow: visible;
+  background: transparent;
+  border-color: transparent;
 }
 
 .remorph-entry {
@@ -209,12 +212,13 @@
 
 .remorph__stage-wrap--split {
   width: calc(var(--remorph-stage-size) * 2 + 12px);
+  min-width: calc(var(--remorph-stage-size) * 2 + 12px);
   height: var(--remorph-stage-size);
   aspect-ratio: auto;
   margin: 0;
   overflow: visible;
   background: transparent;
-  border-color: transparent;
+  border: none;
 }
 
 .remorph-split {
@@ -222,7 +226,8 @@
   gap: 12px;
   align-items: flex-start;
   width: fit-content;
-  height: 100%;
+  min-width: calc(var(--remorph-stage-size) * 2 + 12px);
+  height: var(--remorph-stage-size);
 }
 
 .remorph-split__pane {
@@ -230,9 +235,11 @@
   display: block;
   flex: 0 0 var(--remorph-stage-size);
   width: var(--remorph-stage-size);
+  min-width: var(--remorph-stage-size);
   height: var(--remorph-stage-size);
+  min-height: var(--remorph-stage-size);
   padding: 0;
-  border: 2px solid transparent;
+  border: 1px solid var(--remorph-border);
   border-radius: var(--remorph-radius);
   background: #f4f2ef;
   cursor: pointer;
@@ -249,45 +256,8 @@
 }
 
 .remorph-split__pane.is-active {
-  border-color: #7ec8f0;
+  border: 2px solid #7ec8f0;
   box-shadow: none;
-}
-
-.remorph-split__pane-badge {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  z-index: 3;
-  padding: 4px 8px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid var(--remorph-border);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--remorph-muted);
-  pointer-events: none;
-}
-
-.remorph-split__pane.is-active .remorph-split__pane-badge {
-  background: rgba(126, 200, 240, 0.18);
-  color: #2a7fa8;
-  border-color: #7ec8f0;
-}
-
-.remorph-split__pane-label {
-  position: absolute;
-  bottom: 10px;
-  left: 10px;
-  z-index: 3;
-  padding: 4px 8px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid var(--remorph-border);
-  font-size: 12px;
-  color: var(--remorph-muted);
-  pointer-events: none;
 }
 
 .remorph-float {
@@ -376,7 +346,10 @@
   border-radius: var(--remorph-radius);
   overflow: hidden;
   background: #f4f2ef;
-  aspect-ratio: 1 / 1;
+  width: var(--remorph-stage-size);
+  height: var(--remorph-stage-size);
+  aspect-ratio: auto;
+  flex-shrink: 0;
 }
 
 .remorph__stage-wrap.is-drop-target {

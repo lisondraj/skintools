@@ -82,12 +82,8 @@ function SplitPane({
       className={`remorph-split__pane ${isActive ? "is-active" : ""}`}
       onClick={onSelect}
       aria-pressed={isActive}
-      aria-label={`${side} pane: ${pane.label}${isActive ? " (editing)" : ""}`}
+      aria-label={`${side} pane${isActive ? " (selected)" : ""}`}
     >
-      <span className="remorph-split__pane-badge">
-        {isActive ? "Editing" : "Click to edit"}
-      </span>
-      <span className="remorph-split__pane-label">{pane.label}</span>
       {isActive ? (
         <ImageStage
           ref={maskRef}
