@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from "re
 import { DraggableEditorPanel } from "@/components/remorph/DraggableEditorPanel";
 import { EntryBoxes } from "@/components/remorph/EntryBoxes";
 import { HistoryPanel } from "@/components/remorph/HistoryPanel";
-import { ImageStage } from "@/components/remorph/ImageStage";
+import { LoadingState } from "@/components/remorph/LoadingState";
 import { PromptBar } from "@/components/remorph/PromptBar";
 import { SplitStage } from "@/components/remorph/SplitStage";
 import type { MaskCanvasHandle } from "@/components/remorph/MaskCanvas";
@@ -534,13 +534,6 @@ export default function RemorphPage() {
     <>
       {error && <div className="remorph__error">{error}</div>}
 
-      {busy && hasEditImage && (
-        <div className="remorph__loading">
-          <span className="remorph__spinner" aria-hidden />
-          Working...
-        </div>
-      )}
-
       {hasEditImage && (
         <>
           <section className="remorph__section remorph__section--sources">
@@ -611,13 +604,13 @@ export default function RemorphPage() {
             />
 
             {busy && (
-              <div className="remorph__drop-overlay" aria-hidden>
-                Working...
+              <div className="remorph__drop-overlay">
+                <LoadingState variant="overlay" />
               </div>
             )}
 
-            {(dropHover || splitDropHint) && (
-              <div className="remorph__drop-overlay" aria-hidden>
+            {(dropHover || splitDropHint) && !busy && (
+              <div className="remorph__drop-overlay remorph__drop-overlay--hint" aria-hidden>
                 {dropHover ? "Drop image" : "Drag from history below"}
               </div>
             )}
@@ -656,9 +649,15 @@ export default function RemorphPage() {
               />
             )}
 
-            {(dropHover || splitDropHint) && (
-              <div className="remorph__drop-overlay" aria-hidden>
+            {(dropHover || splitDropHint) && !busy && (
+              <div className="remorph__drop-overlay remorph__drop-overlay--hint" aria-hidden>
                 {dropHover ? "Split screen" : "Drag from history below"}
+              </div>
+            )}
+
+            {busy && (
+              <div className="remorph__drop-overlay">
+                <LoadingState variant="overlay" />
               </div>
             )}
           </div>
