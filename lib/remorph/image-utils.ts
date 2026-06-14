@@ -90,6 +90,8 @@ export async function normalizeToStage(
   size = REMORPH_STAGE_SIZE,
 ): Promise<string> {
   const img = await loadImage(source);
+  if (img.width === size && img.height === size) return source;
+
   const canvas = document.createElement("canvas");
   canvas.width = size;
   canvas.height = size;
@@ -104,6 +106,29 @@ export async function normalizeToStage(
   ctx.drawImage(img, x, y, w, h);
 
   return canvas.toDataURL("image/png");
+}
+
+/** Compress a data URL to JPEG for smaller API uploads. */
+export async function compressForUpload(
+  source: string,
+  quality = 0.85,
+  size = REMORPH_STAGE_SIZE,
+): Promise<string> {
+  const img = await loadImage(source);
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Could not prepare canvas.");
+
+  const scale = Math.max(size / img.width, size / img.height);
+  const w = img.width * scale;
+  const h = img.height * scale;
+  const x = (size - w) / 2;
+  const y = (size - h) / 2;
+  ctx.drawImage(img, x, y, w, h);
+
+  return canvas.toDataURL("image/jpeg", quality);
 }
 
 export function readFileAsDataUrl(file: File): Promise<string> {

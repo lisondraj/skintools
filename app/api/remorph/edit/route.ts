@@ -4,6 +4,7 @@ import type { EditRequest, ImageResponse } from "@/lib/remorph/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   try {
@@ -20,7 +21,8 @@ export async function POST(request: Request) {
     }
 
     const mask = body.mask?.trim() || undefined;
-    const result = await editLesionImage(image, prompt, mask);
+    const qualityMode = body.qualityMode === "quality" ? "quality" : "fast";
+    const result = await editLesionImage(image, prompt, mask, qualityMode);
     return NextResponse.json({ image: result } satisfies ImageResponse);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Edit failed.";

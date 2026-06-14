@@ -10,6 +10,7 @@ type ImageStageProps = {
   brushMode: "paint" | "erase";
   disabled?: boolean;
   loading?: boolean;
+  previewImage?: string | null;
   hoverLabel?: string;
 };
 
@@ -21,6 +22,7 @@ export const ImageStage = forwardRef<MaskCanvasHandle, ImageStageProps>(
       brushMode,
       disabled = false,
       loading = false,
+      previewImage = null,
       hoverLabel,
     },
     ref,
@@ -37,6 +39,15 @@ export const ImageStage = forwardRef<MaskCanvasHandle, ImageStageProps>(
         />
         {hoverLabel && (
           <span className="remorph-stage__hover-label">{hoverLabel}</span>
+        )}
+        {loading && previewImage && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={previewImage}
+            alt=""
+            aria-hidden
+            className="remorph-stage__preview"
+          />
         )}
         {loading && (
           <div className="remorph-stage__loading">

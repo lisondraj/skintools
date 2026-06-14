@@ -51,7 +51,8 @@ export async function generateDesignImage(
       prompt,
       size: "1024x1536",
       quality: "high",
-      response_format: "b64_json",
+      output_format: "jpeg",
+      output_compression: 85,
     }),
   });
 
@@ -68,7 +69,7 @@ export async function generateDesignImage(
 
   const b64 = data.data?.[0]?.b64_json;
   if (!b64) throw new Error("OpenAI returned no design image data.");
-  return `data:image/png;base64,${b64}`;
+  return `data:image/jpeg;base64,${b64}`;
 }
 
 export async function generateBothDesignImages(

@@ -1,11 +1,15 @@
+export type RemorphQualityMode = "fast" | "quality";
+
 export type GenerateRequest = {
   prompt: string;
+  qualityMode?: RemorphQualityMode;
 };
 
 export type EditRequest = {
   image: string;
   mask?: string;
   prompt: string;
+  qualityMode?: RemorphQualityMode;
 };
 
 export type SegmentRequest = {

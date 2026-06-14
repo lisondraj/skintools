@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useRef } from "react";
 import type { InfographicContent, InfographicDoc } from "@/lib/infographic/types";
 import { buildTemplateA, buildTemplateB } from "@/lib/infographic/templates";
@@ -28,7 +29,6 @@ export default function InfographicPage() {
   const [docB, setDocB] = useState<InfographicDoc | null>(null);
   const [activeDoc, setActiveDoc] = useState<InfographicDoc | null>(null);
 
-  const [hoveredVariant, setHoveredVariant] = useState<"A" | "B" | null>(null);
   const [generatingPhase, setGeneratingPhase] = useState<
     "content" | "designs" | null
   >(null);
@@ -152,41 +152,44 @@ export default function InfographicPage() {
     setContent(null);
   }
 
-  // ── Editor view ──────────────────────────────────────────────
   if (step === "editor" && activeDoc) {
     return (
-      <div className="ig">
+      <div className="skinlog__inner">
         <InfographicEditor doc={activeDoc} onBack={handleBack} />
       </div>
     );
   }
 
-  // ── Main shell ───────────────────────────────────────────────
   return (
-    <div className="ig">
-      <div className="ig__shell">
-        <header className="ig__header">
-          <h1 className="ig__logo">Infographic Builder</h1>
-          <p className="ig__tagline">AI-generated patient education infographics</p>
-        </header>
+    <div className="skinlog__inner">
+      <header className="skinlog__header">
+        <Link href="/infographic" className="skinlog__logo">
+          Infographic Builder
+        </Link>
+      </header>
 
-        {/* Input form */}
+      <main className="skinlog__section">
         {(step === "input" || step === "generating") && (
-          <div className="ig__form-wrap">
-            <div className="ig__form">
-              {error && <div className="ig__error">{error}</div>}
+          <>
+            <h1 className="skinlog__title">Patient education, made simple.</h1>
+            <p className="skinlog__lead">
+              Enter a diagnosis and optional instructions. AI generates two
+              infographic designs — pick one, edit the text, and export.
+            </p>
 
-              {/* Diagnosis */}
-              <div className="ig__field">
-                <label className="ig__label" htmlFor="ig-diagnosis">
+            {error && <div className="skinlog__error">{error}</div>}
+
+            <div className="ig-form">
+              <div className="ig-field">
+                <label className="ig-field__label" htmlFor="ig-diagnosis">
                   Diagnosis
                 </label>
                 <input
                   ref={diagnosisRef}
                   id="ig-diagnosis"
                   type="text"
-                  className="ig__input"
-                  placeholder="e.g. Atopic Dermatitis, Type 2 Diabetes, Hypertension…"
+                  className="ig-field__input"
+                  placeholder="e.g. Atopic dermatitis"
                   value={diagnosis}
                   onChange={(e) => {
                     setDiagnosis(e.target.value);
@@ -197,35 +200,31 @@ export default function InfographicPage() {
                 />
               </div>
 
-              {/* Instructions */}
-              <div className="ig__field">
-                <div className="ig__label-row">
-                  <label className="ig__label" htmlFor="ig-instructions">
+              <div className="ig-field">
+                <div className="ig-field__label-row">
+                  <label className="ig-field__label" htmlFor="ig-instructions">
                     Instructions
                   </label>
                   <button
                     type="button"
-                    className="ig__ai-fill-btn"
+                    className="ig-ai-fill"
                     onClick={handleFillInstructions}
                     disabled={filling || step === "generating"}
                   >
                     {filling ? (
                       <>
-                        <span className="ig__spinner" />
-                        Generating…
+                        <span className="skinlog__spinner" />
+                        Filling…
                       </>
                     ) : (
-                      <>
-                        <span className="ig__sparkle">✦</span>
-                        AI fill
-                      </>
+                      "AI fill"
                     )}
                   </button>
                 </div>
                 <textarea
                   id="ig-instructions"
-                  className="ig__textarea"
-                  placeholder="Paste clinical instructions, key messages, or leave blank — AI fills in the gaps."
+                  className="ig-field__textarea"
+                  placeholder="Paste clinical instructions, or leave blank — AI fills in the gaps."
                   value={instructions}
                   onChange={(e) => setInstructions(e.target.value)}
                   disabled={step === "generating" || filling}
@@ -233,15 +232,14 @@ export default function InfographicPage() {
                 />
               </div>
 
-              {/* Language */}
-              <div className="ig__field">
-                <label className="ig__label" htmlFor="ig-language">
+              <div className="ig-field">
+                <label className="ig-field__label" htmlFor="ig-language">
                   Language
                 </label>
-                <div className="ig__lang-row">
+                <div className="ig-lang-row">
                   <select
                     id="ig-language"
-                    className="ig__select"
+                    className="ig-field__select"
                     value={language}
                     onChange={(e) => {
                       setLanguage(e.target.value);
@@ -259,7 +257,7 @@ export default function InfographicPage() {
                   {language === "other" && (
                     <input
                       type="text"
-                      className="ig__input ig__input--lang"
+                      className="ig-field__input"
                       placeholder="Enter language"
                       value={customLang}
                       onChange={(e) => setCustomLang(e.target.value)}
@@ -269,18 +267,17 @@ export default function InfographicPage() {
                 </div>
               </div>
 
-              {/* Generate button */}
               <button
                 type="button"
-                className="ig__generate-btn"
+                className="skinlog__btn"
                 onClick={handleGenerate}
                 disabled={step === "generating" || !diagnosis.trim()}
               >
                 {step === "generating" ? (
                   <>
-                    <span className="ig__spinner" />
+                    <span className="skinlog__spinner" />
                     {generatingPhase === "designs"
-                      ? "Generating design images…"
+                      ? "Generating designs…"
                       : "Generating content…"}
                   </>
                 ) : (
@@ -289,86 +286,72 @@ export default function InfographicPage() {
               </button>
             </div>
 
-            {/* Steps explainer */}
-            <div className="ig__how">
-              <div className="ig__how-step">
-                <div className="ig__how-num">01</div>
-                <div className="ig__how-text">
+            <ol className="ig-steps">
+              <li className="ig-steps__item">
+                <span className="ig-steps__num">01</span>
+                <span>
                   <strong>Enter diagnosis</strong>
-                  <span>AI generates structured patient content</span>
-                </div>
-              </div>
-              <div className="ig__how-step">
-                <div className="ig__how-num">02</div>
-                <div className="ig__how-text">
+                  AI writes structured patient content
+                </span>
+              </li>
+              <li className="ig-steps__item">
+                <span className="ig-steps__num">02</span>
+                <span>
                   <strong>Choose a style</strong>
-                  <span>Two AI-generated designs side by side</span>
-                </div>
-              </div>
-              <div className="ig__how-step">
-                <div className="ig__how-num">03</div>
-                <div className="ig__how-text">
-                  <strong>Edit &amp; export</strong>
-                  <span>Edit text overlays — export as PNG or SVG</span>
-                </div>
-              </div>
-            </div>
-          </div>
+                  Two AI-generated designs to compare
+                </span>
+              </li>
+              <li className="ig-steps__item">
+                <span className="ig-steps__num">03</span>
+                <span>
+                  <strong>Edit and export</strong>
+                  Adjust text overlays, save as PNG or SVG
+                </span>
+              </li>
+            </ol>
+
+            <p className="skinlog__disclaimer">
+              For patient education only. Not a substitute for medical advice.
+            </p>
+          </>
         )}
 
-        {/* Preview */}
         {step === "preview" && docA && docB && (
-          <div className="ig__preview-wrap">
-            <div className="ig__preview-header">
-              <h2 className="ig__preview-title">Choose a style</h2>
-              <p className="ig__preview-sub">
-                Click a design to open the editor — or{" "}
-                <button
-                  type="button"
-                  className="ig__text-btn"
-                  onClick={handleRegenerate}
-                >
-                  start over
-                </button>
-              </p>
-            </div>
+          <div className="ig-preview">
+            <h1 className="skinlog__title">Choose a style</h1>
+            <p className="skinlog__lead">
+              Tap a design to open the editor, or{" "}
+              <button type="button" className="ig-text-btn" onClick={handleRegenerate}>
+                start over
+              </button>
+              .
+            </p>
 
             {content && (
-              <div className="ig__content-summary">
-                <span className="ig__content-tag">{content.title}</span>
-                <span className="ig__content-meta">{lang}</span>
+              <div className="ig-preview__meta">
+                <span className="ig-preview__tag">{content.title}</span>
+                <span className="ig-preview__lang">{lang}</span>
               </div>
             )}
 
-            <div className="ig__template-grid">
+            <div className="ig-templates">
               {([docA, docB] as InfographicDoc[]).map((doc) => (
                 <button
                   key={doc.variant}
                   type="button"
-                  className={`ig__template-card ${hoveredVariant === doc.variant ? "is-hovered" : ""}`}
-                  onMouseEnter={() => setHoveredVariant(doc.variant)}
-                  onMouseLeave={() => setHoveredVariant(null)}
+                  className="ig-template-card"
                   onClick={() => handleSelectTemplate(doc)}
-                  aria-label={`Select template ${doc.variant}`}
+                  aria-label={`Select style ${doc.variant}`}
                 >
-                  <div className="ig__template-badge">
-                    Style {doc.variant}
-                  </div>
-                  <div className="ig__template-svg-wrap">
-                    <InfographicSVG
-                      doc={doc}
-                      className="ig__template-svg"
-                    />
-                  </div>
-                  <div className="ig__template-cta">
-                    Edit this style →
-                  </div>
+                  <div className="ig-template-card__label">Style {doc.variant}</div>
+                  <InfographicSVG doc={doc} className="ig-template-card__svg" />
+                  <div className="ig-template-card__cta">Edit this style</div>
                 </button>
               ))}
             </div>
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

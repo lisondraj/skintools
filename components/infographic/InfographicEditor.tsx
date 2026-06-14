@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   useState,
   useRef,
@@ -362,44 +363,43 @@ export function InfographicEditor({ doc, onBack }: Props) {
 
   return (
     <div className="ig-editor">
-      {/* Toolbar */}
-      <div className="ig-editor__toolbar">
-        <button type="button" className="ig-editor__btn ig-editor__btn--back" onClick={onBack}>
-          ← Back
+      <header className="skinlog__header">
+        <Link href="/infographic" className="skinlog__logo">
+          Infographic Builder
+        </Link>
+      </header>
+
+      <div className="ig-editor__bar">
+        <button type="button" className="skinlog__btn skinlog__btn--secondary" onClick={onBack}>
+          Back
         </button>
-        <div className="ig-editor__toolbar-center">
-          <span className="ig-editor__hint">
-            Click text to select · Drag to reposition · Double-click to edit
-          </span>
-        </div>
-        <div className="ig-editor__toolbar-end">
-          {exportMsg && <span className="ig-editor__export-msg">{exportMsg}</span>}
-          <button
-            type="button"
-            className="ig-editor__btn ig-editor__btn--secondary"
-            onClick={handleExportSVG}
-          >
-            Export SVG
-          </button>
-          <button
-            type="button"
-            className="ig-editor__btn ig-editor__btn--primary"
-            onClick={handleExportPNG}
-          >
-            Export PNG
-          </button>
-        </div>
+        {exportMsg && <span className="ig-editor__msg">{exportMsg}</span>}
+        <button
+          type="button"
+          className="skinlog__btn skinlog__btn--secondary"
+          onClick={handleExportSVG}
+        >
+          Export SVG
+        </button>
+        <button
+          type="button"
+          className="skinlog__btn"
+          onClick={handleExportPNG}
+        >
+          Export PNG
+        </button>
+        <p className="ig-editor__hint">
+          Click text to select · Drag to reposition · Double-click to edit
+        </p>
       </div>
 
-      {/* Canvas */}
-      <div className="ig-editor__canvas-wrap" ref={wrapRef}>
+      <div className="ig-editor__canvas" ref={wrapRef}>
         <InfographicSVG
           ref={svgRef}
           doc={liveDoc}
           selectedId={selectedId}
           hoverId={textOverlay ? null : hoverId}
           className="ig-editor__svg"
-          style={{ cursor: drag ? "grabbing" : hoverId ? "pointer" : "default" }}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}

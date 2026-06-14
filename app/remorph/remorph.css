@@ -45,6 +45,38 @@
   margin: 0;
 }
 
+.remorph-quality {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--remorph-border);
+  border-radius: 999px;
+  background: #fafafa;
+  gap: 2px;
+}
+
+.remorph-quality__btn {
+  padding: 5px 12px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--remorph-muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.remorph-quality__btn.is-active {
+  background: #ffffff;
+  color: var(--remorph-text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.remorph-quality__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .remorph__tagline {
   margin: 0;
   font-size: 14px;
@@ -855,9 +887,32 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.82);
+  background: rgba(255, 255, 255, 0.72);
   pointer-events: none;
   z-index: 5;
+}
+
+.remorph-stage__preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 4;
+  filter: blur(1px);
+  opacity: 0.95;
+}
+
+.remorph-entry__preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 3;
+  border-radius: var(--remorph-radius);
+  filter: blur(1px);
+  opacity: 0.95;
 }
 
 .remorph-stage__hover-label {

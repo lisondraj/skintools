@@ -6,11 +6,16 @@ import { EntryBoxes } from "@/components/remorph/EntryBoxes";
 import { HistoryPanel } from "@/components/remorph/HistoryPanel";
 import { ImageStage } from "@/components/remorph/ImageStage";
 import { LoadingState } from "@/components/remorph/LoadingState";
+import { QualityModeToggle } from "@/components/remorph/QualityModeToggle";
 import { PromptBar } from "@/components/remorph/PromptBar";
 import { SplitStage } from "@/components/remorph/SplitStage";
 import type { MaskCanvasHandle } from "@/components/remorph/MaskCanvas";
-import { editImage, generateImage } from "@/lib/remorph/client";
-import { normalizeToStage, readFileAsDataUrl } from "@/lib/remorph/image-utils";
+import { editImage, generateImageStream } from "@/lib/remorph/client";
+import {
+  compressForUpload,
+  normalizeToStage,
+  readFileAsDataUrl,
+} from "@/lib/remorph/image-utils";
 import {
   appendAlbumStep,
   createAlbum,
@@ -27,6 +32,7 @@ import {
   type RemorphAlbumStep,
   type RemorphComparePane,
   type RemorphDragStep,
+  type RemorphQualityMode,
 } from "@/lib/remorph/types";
 
 function makeStep(
@@ -83,6 +89,8 @@ export default function RemorphPage() {
   const [generatePrompt, setGeneratePrompt] = useState("");
   const [editPrompt, setEditPrompt] = useState("");
   const [busy, setBusy] = useState(false);
+  const [qualityMode, setQualityMode] = useState<RemorphQualityMode>("fast");
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [brushSize, setBrushSize] = useState(36);
   const [brushMode, setBrushMode] = useState<"paint" | "erase">("paint");
@@ -236,8 +244,11 @@ export default function RemorphPage() {
 
     setError(null);
     setBusy(true);
+    setPreviewImage(null);
     try {
-      const generated = await generateImage(trimmed);
+      const generated = await generateImageStream(trimmed, qualityMode, (partial) => {
+        setPreviewImage(partial);
+      });
       const normalized = await normalizeToStage(generated);
       setPreviousImage(null);
       setImage(normalized);
@@ -255,9 +266,10 @@ export default function RemorphPage() {
           : "Generation failed.",
       );
     } finally {
+      setPreviewImage(null);
       setBusy(false);
     }
-  }, [clearMask, exitSplitMode, generatePrompt, splitMode, startAlbum]);
+  }, [clearMask, exitSplitMode, generatePrompt, qualityMode, splitMode, startAlbum]);
 
   const handleEdit = useCallback(async () => {
     const sourceImage = splitMode
@@ -282,12 +294,15 @@ export default function RemorphPage() {
 
     setError(null);
     setBusy(true);
+    setPreviewImage(null);
     try {
       const { mask } = maskRef.current?.exportMask() ?? { mask: null };
+      const uploadImage = await compressForUpload(sourceImage);
       const edited = await editImage({
-        image: sourceImage,
+        image: uploadImage,
         mask: mask ?? undefined,
         prompt: trimmed,
+        qualityMode,
       });
       const normalized = await normalizeToStage(edited);
       const step = makeStep(normalized, "edit", trimmed);
@@ -329,6 +344,7 @@ export default function RemorphPage() {
         editError instanceof Error ? editError.message : "Edit failed.",
       );
     } finally {
+      setPreviewImage(null);
       setBusy(false);
     }
   }, [
@@ -339,6 +355,7 @@ export default function RemorphPage() {
     editTarget,
     editPrompt,
     image,
+    qualityMode,
     splitMode,
   ]);
 
@@ -610,6 +627,11 @@ export default function RemorphPage() {
     <div className="remorph__shell">
       <header className="remorph__header">
         <h1 className="remorph__logo">Remorph</h1>
+        <QualityModeToggle
+          value={qualityMode}
+          onChange={setQualityMode}
+          disabled={busy}
+        />
       </header>
 
       <div
@@ -640,6 +662,15 @@ export default function RemorphPage() {
               busy={busy}
               historyDropActive={splitDropHint || dropHover}
             />
+            {busy && previewImage && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={previewImage}
+                alt=""
+                aria-hidden
+                className="remorph-entry__preview"
+              />
+            )}
             {busy && (
               <div className="remorph__drop-overlay">
                 <LoadingState variant="overlay" />
@@ -669,6 +700,7 @@ export default function RemorphPage() {
               brushMode={brushMode}
               disabled={busy}
               loading={busy}
+              previewImage={previewImage}
               hoverLabel={stageHoverLabel}
             />
             {(dropHover || splitDropHint) && !busy && (
