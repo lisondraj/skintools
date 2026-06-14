@@ -28,6 +28,32 @@ export type SegmentResponse = {
   features: RemorphFeature[];
 };
 
+export type RemorphStepKind = "generate" | "edit" | "upload";
+
+export type RemorphAlbumStep = {
+  id: string;
+  image: string;
+  kind: RemorphStepKind;
+  prompt?: string;
+  createdAt: number;
+};
+
+export type RemorphAlbum = {
+  id: string;
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+  steps: RemorphAlbumStep[];
+};
+
+export type TitleRequest = {
+  image: string;
+};
+
+export type TitleResponse = {
+  title: string;
+};
+
 export const REMORPH_STAGE_SIZE = 1024;
 export const REMORPH_SEG_RES = 512;
 export const REMORPH_SKIN_CATEGORY = "skin";

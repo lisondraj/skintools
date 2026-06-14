@@ -1,11 +1,35 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { HistoryPanel } from "@/components/remorph/HistoryPanel";
 import { ImageStage } from "@/components/remorph/ImageStage";
 import { PromptBar } from "@/components/remorph/PromptBar";
 import type { MaskCanvasHandle } from "@/components/remorph/MaskCanvas";
 import { editImage, generateImage } from "@/lib/remorph/client";
 import { normalizeToStage, readFileAsDataUrl } from "@/lib/remorph/image-utils";
+import {
+  appendAlbumStep,
+  createAlbum,
+  getAlbums,
+  truncateTitle,
+  updateAlbumTitle,
+} from "@/lib/remorph/storage";
+import { fetchImageTitle } from "@/lib/remorph/title-client";
+import type { RemorphAlbum, RemorphAlbumStep } from "@/lib/remorph/types";
+
+function makeStep(
+  image: string,
+  kind: RemorphAlbumStep["kind"],
+  prompt?: string,
+): RemorphAlbumStep {
+  return {
+    id: crypto.randomUUID(),
+    image,
+    kind,
+    prompt,
+    createdAt: Date.now(),
+  };
+}
 
 export default function RemorphPage() {
   const [image, setImage] = useState<string | null>(null);
@@ -15,13 +39,51 @@ export default function RemorphPage() {
   const [error, setError] = useState<string | null>(null);
   const [brushSize, setBrushSize] = useState(36);
   const [brushMode, setBrushMode] = useState<"paint" | "erase">("paint");
+  const [albums, setAlbums] = useState<RemorphAlbum[]>([]);
 
   const maskRef = useRef<MaskCanvasHandle>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const activeAlbumIdRef = useRef<string | null>(null);
+
+  const refreshAlbums = useCallback(() => {
+    setAlbums(getAlbums());
+  }, []);
+
+  useEffect(() => {
+    refreshAlbums();
+  }, [refreshAlbums]);
 
   const clearMask = useCallback(() => {
     maskRef.current?.clear();
   }, []);
+
+  const startAlbum = useCallback(
+    (step: RemorphAlbumStep, fallbackTitle: string) => {
+      const album = createAlbum(step, truncateTitle(fallbackTitle));
+      activeAlbumIdRef.current = album.id;
+      refreshAlbums();
+
+      void fetchImageTitle(step.image)
+        .then((title) => {
+          updateAlbumTitle(album.id, title);
+          refreshAlbums();
+        })
+        .catch(() => {
+          /* keep fallback title */
+        });
+    },
+    [refreshAlbums],
+  );
+
+  const addEditToAlbum = useCallback(
+    (step: RemorphAlbumStep) => {
+      const albumId = activeAlbumIdRef.current;
+      if (!albumId) return;
+      appendAlbumStep(albumId, step);
+      refreshAlbums();
+    },
+    [refreshAlbums],
+  );
 
   const handleUpload = useCallback(
     async (file: File) => {
@@ -33,6 +95,8 @@ export default function RemorphPage() {
         setPreviousImage(null);
         setImage(normalized);
         clearMask();
+        activeAlbumIdRef.current = null;
+        startAlbum(makeStep(normalized, "upload"), "Uploaded skin photo");
       } catch (uploadError) {
         setError(
           uploadError instanceof Error
@@ -43,7 +107,7 @@ export default function RemorphPage() {
         setBusy(false);
       }
     },
-    [clearMask],
+    [clearMask, startAlbum],
   );
 
   const handleGenerate = useCallback(async () => {
@@ -58,6 +122,8 @@ export default function RemorphPage() {
       setPreviousImage(null);
       setImage(normalized);
       clearMask();
+      activeAlbumIdRef.current = null;
+      startAlbum(makeStep(normalized, "generate", trimmed), trimmed);
     } catch (generateError) {
       setError(
         generateError instanceof Error
@@ -67,7 +133,7 @@ export default function RemorphPage() {
     } finally {
       setBusy(false);
     }
-  }, [clearMask, prompt]);
+  }, [clearMask, prompt, startAlbum]);
 
   const handleEdit = useCallback(async () => {
     if (!image) return;
@@ -87,6 +153,7 @@ export default function RemorphPage() {
       setPreviousImage(image);
       setImage(normalized);
       clearMask();
+      addEditToAlbum(makeStep(normalized, "edit", trimmed));
     } catch (editError) {
       setError(
         editError instanceof Error ? editError.message : "Edit failed.",
@@ -94,7 +161,7 @@ export default function RemorphPage() {
     } finally {
       setBusy(false);
     }
-  }, [clearMask, image, prompt]);
+  }, [addEditToAlbum, clearMask, image, prompt]);
 
   const handleUndo = useCallback(() => {
     if (!previousImage) return;
@@ -103,6 +170,17 @@ export default function RemorphPage() {
     clearMask();
     setError(null);
   }, [clearMask, previousImage]);
+
+  const handleSelectHistoryImage = useCallback(
+    (selected: string, albumId: string) => {
+      setImage(selected);
+      setPreviousImage(null);
+      activeAlbumIdRef.current = albumId;
+      clearMask();
+      setError(null);
+    },
+    [clearMask],
+  );
 
   const handleSubmit = image ? handleEdit : handleGenerate;
 
@@ -198,6 +276,12 @@ export default function RemorphPage() {
           />
         </div>
       </div>
+
+      <HistoryPanel
+        albums={albums}
+        onAlbumsChange={refreshAlbums}
+        onSelectImage={handleSelectHistoryImage}
+      />
     </div>
   );
 }
