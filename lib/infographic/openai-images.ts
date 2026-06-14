@@ -39,32 +39,31 @@ function toJpegDataUrl(b64: string): string {
   return `data:image/jpeg;base64,${b64}`;
 }
 
-const STYLE_MOODS: Record<"A" | "B", string> = {
-  A: `Style A — clinical and authoritative. Choose a design direction that feels like premium medical literature: precise, trustworthy, information-dense. Colour, layout, typography, and visual motifs are entirely your choice.`,
-  B: `Style B — warm and accessible. Choose a design direction that feels approachable and empowering for patients: friendly, clear, visually engaging. Colour, layout, typography, and visual motifs are entirely your choice.`,
-};
-
 function buildInfographicPrompt(
   style: "A" | "B",
   content: InfographicContent,
   language: string,
 ): string {
   const textBlock = flattenContent(content, language);
+  const variantNote =
+    style === "A"
+      ? "This is variant A."
+      : "This is variant B — take a completely different creative approach from variant A.";
 
   return `Create a patient education infographic poster for an Ontario, Canada dermatology clinic. Portrait orientation (2:3 aspect ratio).
 
-${STYLE_MOODS[style]}
+${variantNote}
 
-Embed ALL of the following text legibly into the image — every word must appear, well-typeset and readable:
+You have full creative freedom over layout, colour palette, typography, illustration style, and visual design. Make bold, original choices.
+
+Include all of the following text legibly in the image:
 
 ${textBlock}
 
-Rules:
-- Every piece of text above must appear in the image
-- Present each section as a heading plus short bullet points — never dense paragraph blocks
-- Ontario, Canada healthcare context throughout
-- No watermarks, placeholder text, or lorem ipsum
-- Professional medical education quality`;
+Requirements:
+- All text above must appear and be readable
+- Ontario, Canada healthcare context
+- No watermarks or placeholder text`;
 }
 
 function generationBody(
