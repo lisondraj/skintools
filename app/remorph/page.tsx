@@ -613,9 +613,15 @@ export default function RemorphPage() {
       </header>
 
       <div
-        className={`remorph__workspace ${splitMode ? "remorph__workspace--split" : ""} ${!image && !splitMode ? "remorph__workspace--entry" : ""} ${image && !splitMode ? "remorph__workspace--editor" : ""}`}
+        className={[
+          "remorph__workspace",
+          splitMode ? "remorph__workspace--split" : "",
+          !image && !splitMode ? "remorph__workspace--entry" : "",
+          image && !splitMode ? "remorph__workspace--editor" : "",
+        ].join(" ")}
       >
-        {!image && !splitMode ? (
+        {/* ── Entry (no image yet) ── */}
+        {!image && !splitMode && (
           <div
             className={`remorph-entry-area ${dropHover || splitDropHint ? "is-drop-target" : ""}`}
             onDragOver={handleStageDragOver}
@@ -623,7 +629,6 @@ export default function RemorphPage() {
             onDrop={handleStageDrop}
           >
             {error && <div className="remorph__error">{error}</div>}
-
             <EntryBoxes
               onUploadClick={() => fileInputRef.current?.click()}
               promptOpen={promptEntryOpen}
@@ -635,52 +640,37 @@ export default function RemorphPage() {
               busy={busy}
               historyDropActive={splitDropHint || dropHover}
             />
-
             {busy && (
               <div className="remorph__drop-overlay">
                 <LoadingState variant="overlay" />
               </div>
             )}
-
             {(dropHover || splitDropHint) && !busy && (
               <div className="remorph__drop-overlay remorph__drop-overlay--hint" aria-hidden>
                 {dropHover ? "Drop image" : "Drag from history below"}
               </div>
             )}
           </div>
-        ) : (
+        )}
+
+        {/* ── Single-image editor ── */}
+        {image && !splitMode && (
           <div
             ref={stageWrapRef}
-            className={`remorph__stage-wrap ${splitMode ? "remorph__stage-wrap--split" : ""} ${dropHover || splitDropHint ? "is-drop-target" : ""}`}
-            style={splitMode && splitPaneSize ? ({ "--split-pane-size": `${splitPaneSize}px` } as React.CSSProperties) : undefined}
+            className={`remorph__stage-wrap ${dropHover || splitDropHint ? "is-drop-target" : ""}`}
             onDragOver={handleStageDragOver}
             onDragLeave={handleStageDragLeave}
             onDrop={handleStageDrop}
           >
-            {splitMode && compareLeft && compareRight ? (
-              <SplitStage
-                ref={maskRef}
-                left={compareLeft}
-                right={compareRight}
-                editTarget={editTarget}
-                onSelectTarget={handleSelectEditTarget}
-                brushSize={brushSize}
-                brushMode={brushMode}
-                disabled={busy}
-                loading={busy}
-              />
-            ) : (
-              <ImageStage
-                ref={maskRef}
-                image={image!}
-                brushSize={brushSize}
-                brushMode={brushMode}
-                disabled={busy}
-                loading={busy}
-                hoverLabel={stageHoverLabel}
-              />
-            )}
-
+            <ImageStage
+              ref={maskRef}
+              image={image}
+              brushSize={brushSize}
+              brushMode={brushMode}
+              disabled={busy}
+              loading={busy}
+              hoverLabel={stageHoverLabel}
+            />
             {(dropHover || splitDropHint) && !busy && (
               <div className="remorph__drop-overlay remorph__drop-overlay--hint" aria-hidden>
                 {dropHover ? "Split screen" : "Drag from history below"}
@@ -689,6 +679,35 @@ export default function RemorphPage() {
           </div>
         )}
 
+        {/* ── Split-screen ── */}
+        {splitMode && compareLeft && compareRight && (
+          <div
+            className="remorph-split-wrap"
+            style={splitPaneSize ? ({ "--split-pane-size": `${splitPaneSize}px` } as React.CSSProperties) : undefined}
+            onDragOver={handleStageDragOver}
+            onDragLeave={handleStageDragLeave}
+            onDrop={handleStageDrop}
+          >
+            <SplitStage
+              ref={maskRef}
+              left={compareLeft}
+              right={compareRight}
+              editTarget={editTarget}
+              onSelectTarget={handleSelectEditTarget}
+              brushSize={brushSize}
+              brushMode={brushMode}
+              disabled={busy}
+              loading={busy}
+            />
+            {(dropHover || splitDropHint) && !busy && (
+              <div className="remorph__drop-overlay remorph__drop-overlay--hint" aria-hidden>
+                Drag from history below
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Right panel (editor) ── */}
         {!splitMode && image && <div className="remorph__panel">{editorPanel}</div>}
       </div>
 

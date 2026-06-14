@@ -2,7 +2,6 @@
 
 import type { CSSProperties } from "react";
 import {
-  deleteAlbum,
   deleteAlbumStep,
   formatAlbumTime,
   truncateTitle,
@@ -51,21 +50,6 @@ function AlbumStack({
       style={{ "--album-visible-count": visibleCount } as CSSProperties}
     >
       <div className="remorph-album__stack">
-        {album.steps.length > 1 && (
-          <button
-            type="button"
-            className="remorph-album__delete"
-            aria-label="Delete bundle"
-            onClick={() => {
-              deleteAlbum(album.id);
-              onAlbumsChange();
-              onDeleteAlbum(album.id);
-            }}
-          >
-            ×
-          </button>
-        )}
-
         {/* Render oldest first so latest (highest z-index) paints on top */}
         {visibleSteps.map((step, visIdx) => {
           const globalIndex = album.steps.indexOf(step);
@@ -123,7 +107,7 @@ function AlbumStackLayer({
 
   return (
     <div
-      className="remorph-album__layer"
+      className={`remorph-album__layer ${isLatest ? "is-latest" : "is-background"}`}
       style={
         {
           "--stack-depth": stackDepth,
@@ -131,25 +115,23 @@ function AlbumStackLayer({
         } as CSSProperties
       }
     >
-      <button
-        type="button"
-        className="remorph-album__thumb"
-        draggable
-        onDragStart={(event) => {
-          event.dataTransfer.setData(
-            REMORPH_DRAG_MIME,
-            JSON.stringify(dragPayload),
-          );
-          event.dataTransfer.effectAllowed = "copy";
-        }}
-        onClick={() => onSelectImage(step.image, album.id)}
-        title={
-          step.prompt ? `${step.kind}: ${step.prompt}` : `${step.kind}`
-        }
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={step.image} alt={label} />
-        {isLatest ? (
+      {isLatest ? (
+        <button
+          type="button"
+          className="remorph-album__thumb"
+          draggable
+          onDragStart={(event) => {
+            event.dataTransfer.setData(
+              REMORPH_DRAG_MIME,
+              JSON.stringify(dragPayload),
+            );
+            event.dataTransfer.effectAllowed = "copy";
+          }}
+          onClick={() => onSelectImage(step.image, album.id)}
+          title={step.prompt ? `${step.kind}: ${step.prompt}` : step.kind}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={step.image} alt={label} />
           <span className="remorph-album__overlay">
             <span className="remorph-album__overlay-title">
               {truncateTitle(album.title, 28)}
@@ -158,28 +140,33 @@ function AlbumStackLayer({
               {formatAlbumTime(album.updatedAt)}
             </span>
           </span>
-        ) : (
-          <span className="remorph-album__hover-label">{label}</span>
-        )}
-      </button>
+        </button>
+      ) : (
+        <div className="remorph-album__thumb remorph-album__thumb--bg" aria-hidden>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={step.image} alt="" />
+        </div>
+      )}
 
-      <button
-        type="button"
-        className="remorph-album__thumb-delete"
-        aria-label={`Delete ${label}`}
-        onClick={(event) => {
-          event.stopPropagation();
-          const result = deleteAlbumStep(album.id, step.id);
-          if (!result) return;
-          onAlbumsChange();
-          onDeleteStep(album.id, step.id);
-          if (result.albumRemoved) {
-            onDeleteAlbum(album.id);
-          }
-        }}
-      >
-        ×
-      </button>
+      {isLatest && (
+        <button
+          type="button"
+          className="remorph-album__thumb-delete"
+          aria-label={`Delete ${label}`}
+          onClick={(event) => {
+            event.stopPropagation();
+            const result = deleteAlbumStep(album.id, step.id);
+            if (!result) return;
+            onAlbumsChange();
+            onDeleteStep(album.id, step.id);
+            if (result.albumRemoved) {
+              onDeleteAlbum(album.id);
+            }
+          }}
+        >
+          ×
+        </button>
+      )}
     </div>
   );
 }

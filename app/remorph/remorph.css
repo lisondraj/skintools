@@ -429,33 +429,21 @@
   padding: 0 2px;
 }
 
-.remorph__stage-wrap--split {
+.remorph-split-wrap {
   --_pane: var(--split-pane-size, var(--remorph-split-pane-size));
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12px;
+  flex-shrink: 0;
   width: calc(var(--_pane) * 2 + 12px);
   height: var(--_pane);
-  min-width: 0;
-  flex-shrink: 0;
-  margin: 0;
-  padding: 0;
-  border: none;
-  border-radius: 0;
-  background: transparent;
   overflow: visible;
-  box-shadow: none;
-}
-
-.remorph__stage-wrap--split.is-drop-target {
-  border: none;
-  box-shadow: none;
 }
 
 .remorph-split {
-  display: flex;
-  flex-direction: row;
-  gap: 12px;
-  align-items: flex-start;
-  width: 100%;
-  height: 100%;
+  display: contents;
 }
 
 .remorph-split__pane {
@@ -967,6 +955,19 @@
   top: calc(var(--stack-depth, 0) * var(--remorph-history-stack-offset-y));
   width: var(--remorph-history-size);
   height: var(--remorph-history-size);
+}
+
+.remorph-album__layer.is-background {
+  pointer-events: none;
+}
+
+.remorph-album__thumb--bg {
+  cursor: default;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.remorph-album__thumb--bg:hover {
+  border-color: var(--remorph-border);
 }
 
 .remorph-album__delete {
