@@ -583,7 +583,7 @@ export default function RemorphPage() {
         className={`remorph__workspace ${splitMode ? "remorph__workspace--split" : ""}`}
       >
         <div
-          className={`remorph__stage-wrap ${dropHover ? "is-drop-target" : ""}`}
+          className={`remorph__stage-wrap ${splitMode ? "remorph__stage-wrap--split" : ""} ${dropHover ? "is-drop-target" : ""}`}
           onDragOver={handleStageDragOver}
           onDragLeave={handleStageDragLeave}
           onDrop={handleStageDrop}
