@@ -135,7 +135,7 @@ function AlbumStackLayer({
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={step.image} alt={label} />
-        {isLatest && (
+        {isLatest ? (
           <span className="remorph-album__overlay">
             <span className="remorph-album__overlay-title">
               {truncateTitle(album.title, 28)}
@@ -144,6 +144,8 @@ function AlbumStackLayer({
               {formatAlbumTime(album.updatedAt)}
             </span>
           </span>
+        ) : (
+          <span className="remorph-album__hover-label">{label}</span>
         )}
       </button>
 

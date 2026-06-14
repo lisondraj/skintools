@@ -1,7 +1,5 @@
 "use client";
 
-import { LoadingState } from "@/components/remorph/LoadingState";
-
 type PromptBarProps = {
   prompt: string;
   onPromptChange: (value: string) => void;
@@ -40,7 +38,7 @@ export function PromptBar({
         onClick={onSubmit}
         disabled={busy || !prompt.trim()}
       >
-        {busy ? <LoadingState variant="button" label="Working..." /> : "Apply edit"}
+        {busy ? "Applying..." : "Apply edit"}
       </button>
     </section>
   );

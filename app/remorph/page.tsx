@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from "re
 import { DraggableEditorPanel } from "@/components/remorph/DraggableEditorPanel";
 import { EntryBoxes } from "@/components/remorph/EntryBoxes";
 import { HistoryPanel } from "@/components/remorph/HistoryPanel";
+import { ImageStage } from "@/components/remorph/ImageStage";
 import { LoadingState } from "@/components/remorph/LoadingState";
 import { PromptBar } from "@/components/remorph/PromptBar";
 import { SplitStage } from "@/components/remorph/SplitStage";
@@ -14,6 +15,8 @@ import {
   appendAlbumStep,
   createAlbum,
   getAlbums,
+  hydrateAlbums,
+  onStorageError,
   truncateTitle,
   updateAlbumTitle,
 } from "@/lib/remorph/storage";
@@ -106,8 +109,12 @@ export default function RemorphPage() {
   }, []);
 
   useEffect(() => {
-    refreshAlbums();
+    void hydrateAlbums().then(() => refreshAlbums());
   }, [refreshAlbums]);
+
+  useEffect(() => {
+    return onStorageError((message) => setError(message));
+  }, []);
 
   const clearMask = useCallback(() => {
     maskRef.current?.clear();
@@ -530,6 +537,11 @@ export default function RemorphPage() {
     ? Boolean(editTarget === "left" ? compareLeft?.image : compareRight?.image)
     : Boolean(image);
 
+  const stageHoverLabel =
+    image && activeAlbumIdRef.current
+      ? paneFromImage(albums, image, activeAlbumIdRef.current).label
+      : undefined;
+
   const editorPanel = (
     <>
       {error && <div className="remorph__error">{error}</div>}
@@ -542,6 +554,7 @@ export default function RemorphPage() {
               onUploadClick={() => fileInputRef.current?.click()}
               promptOpen={promptEntryOpen}
               onPromptOpen={() => setPromptEntryOpen(true)}
+              onPromptClose={() => setPromptEntryOpen(false)}
               prompt={prompt}
               onPromptChange={setPrompt}
               onPromptSubmit={() => void handleGenerate()}
@@ -638,6 +651,7 @@ export default function RemorphPage() {
                 brushSize={brushSize}
                 brushMode={brushMode}
                 disabled={busy}
+                loading={busy}
               />
             ) : (
               <ImageStage
@@ -646,18 +660,14 @@ export default function RemorphPage() {
                 brushSize={brushSize}
                 brushMode={brushMode}
                 disabled={busy}
+                loading={busy}
+                hoverLabel={stageHoverLabel}
               />
             )}
 
             {(dropHover || splitDropHint) && !busy && (
               <div className="remorph__drop-overlay remorph__drop-overlay--hint" aria-hidden>
                 {dropHover ? "Split screen" : "Drag from history below"}
-              </div>
-            )}
-
-            {busy && (
-              <div className="remorph__drop-overlay">
-                <LoadingState variant="overlay" />
               </div>
             )}
           </div>

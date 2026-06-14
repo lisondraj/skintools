@@ -2,6 +2,7 @@
 
 import { forwardRef, type Ref } from "react";
 import { ImageStage } from "@/components/remorph/ImageStage";
+import { LoadingState } from "@/components/remorph/LoadingState";
 import type { MaskCanvasHandle } from "@/components/remorph/MaskCanvas";
 import type { RemorphComparePane } from "@/lib/remorph/types";
 
@@ -13,6 +14,7 @@ type SplitStageProps = {
   brushSize: number;
   brushMode: "paint" | "erase";
   disabled?: boolean;
+  loading?: boolean;
 };
 
 export const SplitStage = forwardRef<MaskCanvasHandle, SplitStageProps>(
@@ -25,6 +27,7 @@ export const SplitStage = forwardRef<MaskCanvasHandle, SplitStageProps>(
       brushSize,
       brushMode,
       disabled = false,
+      loading = false,
     },
     ref,
   ) {
@@ -38,6 +41,7 @@ export const SplitStage = forwardRef<MaskCanvasHandle, SplitStageProps>(
           brushSize={brushSize}
           brushMode={brushMode}
           disabled={disabled}
+          loading={loading && editTarget === "left"}
           maskRef={editTarget === "left" ? ref : undefined}
         />
         <SplitPane
@@ -48,6 +52,7 @@ export const SplitStage = forwardRef<MaskCanvasHandle, SplitStageProps>(
           brushSize={brushSize}
           brushMode={brushMode}
           disabled={disabled}
+          loading={loading && editTarget === "right"}
           maskRef={editTarget === "right" ? ref : undefined}
         />
       </div>
@@ -63,6 +68,7 @@ type SplitPaneProps = {
   brushSize: number;
   brushMode: "paint" | "erase";
   disabled?: boolean;
+  loading?: boolean;
   maskRef?: Ref<MaskCanvasHandle>;
 };
 
@@ -74,6 +80,7 @@ function SplitPane({
   brushSize,
   brushMode,
   disabled = false,
+  loading = false,
   maskRef,
 }: SplitPaneProps) {
   return (
@@ -91,6 +98,8 @@ function SplitPane({
           brushSize={brushSize}
           brushMode={brushMode}
           disabled={disabled}
+          loading={loading}
+          hoverLabel={pane.label}
         />
       ) : (
         <div className="remorph-stage">
@@ -100,6 +109,12 @@ function SplitPane({
             alt={pane.label}
             className="remorph-stage__image"
           />
+          <span className="remorph-stage__hover-label">{pane.label}</span>
+          {loading && (
+            <div className="remorph-stage__loading">
+              <LoadingState variant="overlay" />
+            </div>
+          )}
         </div>
       )}
     </button>
