@@ -154,14 +154,14 @@ export default function InfographicPage() {
 
   if (step === "editor" && activeDoc) {
     return (
-      <div className="skinlog__inner">
+      <div className="skinlog__inner ig-shell">
         <InfographicEditor doc={activeDoc} onBack={handleBack} />
       </div>
     );
   }
 
   return (
-    <div className="skinlog__inner">
+    <div className="skinlog__inner ig-shell">
       <header className="skinlog__header">
         <Link href="/infographic" className="skinlog__logo">
           Infographic Builder
@@ -179,6 +179,7 @@ export default function InfographicPage() {
 
             {error && <div className="skinlog__error">{error}</div>}
 
+            <div className="ig-form-layout">
             <div className="ig-form">
               <div className="ig-field">
                 <label className="ig-field__label" htmlFor="ig-diagnosis">
@@ -309,6 +310,7 @@ export default function InfographicPage() {
                 </span>
               </li>
             </ol>
+            </div>
 
             <p className="skinlog__disclaimer">
               For patient education only. Not a substitute for medical advice.
@@ -319,8 +321,8 @@ export default function InfographicPage() {
         {step === "preview" && docA && docB && (
           <div className="ig-preview">
             <h1 className="skinlog__title">Choose a style</h1>
-            <p className="skinlog__lead">
-              Tap a design to open the editor, or{" "}
+            <p className="skinlog__lead ig-preview__lead">
+              Click a design to open the editor, or{" "}
               <button type="button" className="ig-text-btn" onClick={handleRegenerate}>
                 start over
               </button>
