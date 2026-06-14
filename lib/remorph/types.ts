@@ -46,6 +46,22 @@ export type RemorphAlbum = {
   steps: RemorphAlbumStep[];
 };
 
+export const REMORPH_DRAG_MIME = "application/remorph-step";
+
+export type RemorphDragStep = {
+  image: string;
+  albumId: string;
+  stepId: string;
+  label: string;
+};
+
+export type RemorphComparePane = {
+  image: string;
+  albumId: string;
+  stepId: string;
+  label: string;
+};
+
 export type TitleRequest = {
   image: string;
 };

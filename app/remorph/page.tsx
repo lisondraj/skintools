@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { DraggableEditorPanel } from "@/components/remorph/DraggableEditorPanel";
 import { HistoryPanel } from "@/components/remorph/HistoryPanel";
 import { ImageStage } from "@/components/remorph/ImageStage";
 import { PromptBar } from "@/components/remorph/PromptBar";
+import { SplitStage } from "@/components/remorph/SplitStage";
 import type { MaskCanvasHandle } from "@/components/remorph/MaskCanvas";
 import { editImage, generateImage } from "@/lib/remorph/client";
 import { normalizeToStage, readFileAsDataUrl } from "@/lib/remorph/image-utils";
@@ -15,7 +17,13 @@ import {
   updateAlbumTitle,
 } from "@/lib/remorph/storage";
 import { fetchImageTitle } from "@/lib/remorph/title-client";
-import type { RemorphAlbum, RemorphAlbumStep } from "@/lib/remorph/types";
+import {
+  REMORPH_DRAG_MIME,
+  type RemorphAlbum,
+  type RemorphAlbumStep,
+  type RemorphComparePane,
+  type RemorphDragStep,
+} from "@/lib/remorph/types";
 
 function makeStep(
   image: string,
@@ -31,6 +39,40 @@ function makeStep(
   };
 }
 
+function findStepForImage(
+  albums: RemorphAlbum[],
+  albumId: string,
+  imageSrc: string,
+): RemorphAlbumStep | null {
+  const album = albums.find((entry) => entry.id === albumId);
+  if (!album) return null;
+  return (
+    album.steps.find((step) => step.image === imageSrc) ??
+    album.steps[album.steps.length - 1] ??
+    null
+  );
+}
+
+function paneFromImage(
+  albums: RemorphAlbum[],
+  imageSrc: string,
+  albumId: string,
+): RemorphComparePane {
+  const step = findStepForImage(albums, albumId, imageSrc);
+  const index = step
+    ? albums
+        .find((entry) => entry.id === albumId)
+        ?.steps.findIndex((entry) => entry.id === step.id) ?? 0
+    : 0;
+
+  return {
+    image: imageSrc,
+    albumId,
+    stepId: step?.id ?? "",
+    label: index <= 0 ? "Original" : `Edit ${index}`,
+  };
+}
+
 export default function RemorphPage() {
   const [image, setImage] = useState<string | null>(null);
   const [previousImage, setPreviousImage] = useState<string | null>(null);
@@ -40,6 +82,15 @@ export default function RemorphPage() {
   const [brushSize, setBrushSize] = useState(36);
   const [brushMode, setBrushMode] = useState<"paint" | "erase">("paint");
   const [albums, setAlbums] = useState<RemorphAlbum[]>([]);
+  const [splitMode, setSplitMode] = useState(false);
+  const [compareLeft, setCompareLeft] = useState<RemorphComparePane | null>(
+    null,
+  );
+  const [compareRight, setCompareRight] = useState<RemorphComparePane | null>(
+    null,
+  );
+  const [editTarget, setEditTarget] = useState<"left" | "right">("left");
+  const [dropHover, setDropHover] = useState(false);
 
   const maskRef = useRef<MaskCanvasHandle>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -56,6 +107,35 @@ export default function RemorphPage() {
   const clearMask = useCallback(() => {
     maskRef.current?.clear();
   }, []);
+
+  const exitSplitMode = useCallback(() => {
+    const activePane =
+      editTarget === "left" ? compareLeft : compareRight ?? compareLeft;
+
+    setSplitMode(false);
+    setCompareLeft(null);
+    setCompareRight(null);
+    setDropHover(false);
+    clearMask();
+
+    if (activePane) {
+      setImage(activePane.image);
+      activeAlbumIdRef.current = activePane.albumId || null;
+    }
+  }, [clearMask, compareLeft, compareRight, editTarget]);
+
+  const enterSplitMode = useCallback(
+    (left: RemorphComparePane, right: RemorphComparePane) => {
+      setSplitMode(true);
+      setCompareLeft(left);
+      setCompareRight(right);
+      setEditTarget("left");
+      setDropHover(false);
+      clearMask();
+      activeAlbumIdRef.current = left.albumId || null;
+    },
+    [clearMask],
+  );
 
   const startAlbum = useCallback(
     (step: RemorphAlbumStep, fallbackTitle: string) => {
@@ -94,6 +174,7 @@ export default function RemorphPage() {
         const normalized = await normalizeToStage(dataUrl);
         setPreviousImage(null);
         setImage(normalized);
+        if (splitMode) exitSplitMode();
         clearMask();
         activeAlbumIdRef.current = null;
         startAlbum(makeStep(normalized, "upload"), "Uploaded skin photo");
@@ -107,7 +188,7 @@ export default function RemorphPage() {
         setBusy(false);
       }
     },
-    [clearMask, startAlbum],
+    [clearMask, exitSplitMode, splitMode, startAlbum],
   );
 
   const handleGenerate = useCallback(async () => {
@@ -121,6 +202,7 @@ export default function RemorphPage() {
       const normalized = await normalizeToStage(generated);
       setPreviousImage(null);
       setImage(normalized);
+      if (splitMode) exitSplitMode();
       clearMask();
       activeAlbumIdRef.current = null;
       startAlbum(makeStep(normalized, "generate", trimmed), trimmed);
@@ -133,27 +215,73 @@ export default function RemorphPage() {
     } finally {
       setBusy(false);
     }
-  }, [clearMask, prompt, startAlbum]);
+  }, [clearMask, exitSplitMode, prompt, splitMode, startAlbum]);
 
   const handleEdit = useCallback(async () => {
-    if (!image) return;
+    const sourceImage = splitMode
+      ? editTarget === "left"
+        ? compareLeft?.image
+        : compareRight?.image
+      : image;
+
+    if (!sourceImage) return;
     const trimmed = prompt.trim();
     if (!trimmed) return;
+
+    const targetPane = splitMode
+      ? editTarget === "left"
+        ? compareLeft
+        : compareRight
+      : null;
+
+    if (targetPane?.albumId) {
+      activeAlbumIdRef.current = targetPane.albumId;
+    }
 
     setError(null);
     setBusy(true);
     try {
       const { mask } = maskRef.current?.exportMask() ?? { mask: null };
       const edited = await editImage({
-        image,
+        image: sourceImage,
         mask: mask ?? undefined,
         prompt: trimmed,
       });
       const normalized = await normalizeToStage(edited);
-      setPreviousImage(image);
-      setImage(normalized);
+      const step = makeStep(normalized, "edit", trimmed);
+
+      if (splitMode && targetPane) {
+        setPreviousImage(sourceImage);
+        setImage(normalized);
+      } else {
+        setPreviousImage(sourceImage);
+        setImage(normalized);
+      }
+
       clearMask();
-      addEditToAlbum(makeStep(normalized, "edit", trimmed));
+      addEditToAlbum(step);
+
+      if (splitMode && targetPane?.albumId) {
+        const updatedAlbum = getAlbums().find(
+          (entry) => entry.id === targetPane.albumId,
+        );
+        const stepIndex =
+          updatedAlbum?.steps.findIndex((entry) => entry.id === step.id) ?? -1;
+        const label = stepIndex <= 0 ? "Original" : `Edit ${stepIndex}`;
+
+        const labeledPane: RemorphComparePane = {
+          ...targetPane,
+          image: normalized,
+          stepId: step.id,
+          label,
+        };
+
+        if (editTarget === "left") {
+          setCompareLeft(labeledPane);
+        } else {
+          setCompareRight(labeledPane);
+        }
+      }
     } catch (editError) {
       setError(
         editError instanceof Error ? editError.message : "Edit failed.",
@@ -161,28 +289,286 @@ export default function RemorphPage() {
     } finally {
       setBusy(false);
     }
-  }, [addEditToAlbum, clearMask, image, prompt]);
+  }, [
+    addEditToAlbum,
+    clearMask,
+    compareLeft,
+    compareRight,
+    editTarget,
+    image,
+    prompt,
+    splitMode,
+  ]);
 
   const handleUndo = useCallback(() => {
     if (!previousImage) return;
     setImage(previousImage);
+
+    if (splitMode) {
+      if (editTarget === "left" && compareLeft) {
+        setCompareLeft({ ...compareLeft, image: previousImage });
+      } else if (editTarget === "right" && compareRight) {
+        setCompareRight({ ...compareRight, image: previousImage });
+      }
+    }
+
     setPreviousImage(null);
     clearMask();
     setError(null);
-  }, [clearMask, previousImage]);
+  }, [clearMask, compareLeft, compareRight, editTarget, previousImage, splitMode]);
 
   const handleSelectHistoryImage = useCallback(
     (selected: string, albumId: string) => {
+      if (splitMode) exitSplitMode();
       setImage(selected);
       setPreviousImage(null);
       activeAlbumIdRef.current = albumId;
       clearMask();
       setError(null);
     },
-    [clearMask],
+    [clearMask, exitSplitMode, splitMode],
   );
 
-  const handleSubmit = image ? handleEdit : handleGenerate;
+  const handleSelectEditTarget = useCallback(
+    (target: "left" | "right") => {
+      setEditTarget(target);
+      clearMask();
+      const pane = target === "left" ? compareLeft : compareRight;
+      if (pane) {
+        setImage(pane.image);
+        activeAlbumIdRef.current = pane.albumId || null;
+      }
+    },
+    [clearMask, compareLeft, compareRight],
+  );
+
+  const handleStageDragOver = useCallback((event: React.DragEvent) => {
+    if (!event.dataTransfer.types.includes(REMORPH_DRAG_MIME)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+    setDropHover(true);
+  }, []);
+
+  const handleStageDragLeave = useCallback((event: React.DragEvent) => {
+    const next = event.relatedTarget as Node | null;
+    if (next && event.currentTarget.contains(next)) return;
+    setDropHover(false);
+  }, []);
+
+  const handleStageDrop = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
+      setDropHover(false);
+
+      const raw = event.dataTransfer.getData(REMORPH_DRAG_MIME);
+      if (!raw) return;
+
+      let payload: RemorphDragStep;
+      try {
+        payload = JSON.parse(raw) as RemorphDragStep;
+      } catch {
+        return;
+      }
+
+      if (!image) {
+        handleSelectHistoryImage(payload.image, payload.albumId);
+        return;
+      }
+
+      if (splitMode && compareLeft) {
+        setCompareRight(payload);
+        return;
+      }
+
+      const left = paneFromImage(
+        albums,
+        image,
+        activeAlbumIdRef.current ?? "",
+      );
+      enterSplitMode(left, payload);
+    },
+    [albums, compareLeft, enterSplitMode, handleSelectHistoryImage, image, splitMode],
+  );
+
+  const handleDeleteStep = useCallback(
+    (albumId: string, stepId: string) => {
+      const album = albums.find((entry) => entry.id === albumId);
+      const deletedStep = album?.steps.find((step) => step.id === stepId);
+
+      if (splitMode) {
+        const matchesLeft =
+          compareLeft?.albumId === albumId && compareLeft.stepId === stepId;
+        const matchesRight =
+          compareRight?.albumId === albumId && compareRight.stepId === stepId;
+
+        if (matchesLeft && matchesRight) {
+          exitSplitMode();
+          setImage(null);
+          activeAlbumIdRef.current = null;
+        } else if (matchesLeft && compareRight) {
+          setCompareLeft(compareRight);
+          setCompareRight(null);
+          setEditTarget("left");
+          setImage(compareRight.image);
+          activeAlbumIdRef.current = compareRight.albumId || null;
+        } else if (matchesRight && compareLeft) {
+          setCompareRight(null);
+          if (editTarget === "right") {
+            setEditTarget("left");
+            setImage(compareLeft.image);
+            activeAlbumIdRef.current = compareLeft.albumId || null;
+          }
+        }
+      }
+
+      if (
+        deletedStep &&
+        image === deletedStep.image &&
+        activeAlbumIdRef.current === albumId
+      ) {
+        const remaining = album?.steps.filter((step) => step.id !== stepId);
+        const fallback = remaining?.[remaining.length - 1];
+        if (fallback) {
+          setImage(fallback.image);
+          activeAlbumIdRef.current = albumId;
+        } else {
+          setImage(null);
+          activeAlbumIdRef.current = null;
+        }
+        setPreviousImage(null);
+        clearMask();
+      }
+    },
+    [
+      albums,
+      clearMask,
+      compareLeft,
+      compareRight,
+      editTarget,
+      exitSplitMode,
+      image,
+      splitMode,
+    ],
+  );
+
+  const handleDeleteAlbum = useCallback(
+    (albumId: string) => {
+      if (activeAlbumIdRef.current === albumId) {
+        activeAlbumIdRef.current = null;
+      }
+
+      if (splitMode) {
+        const leftMatches = compareLeft?.albumId === albumId;
+        const rightMatches = compareRight?.albumId === albumId;
+
+        if (leftMatches && rightMatches) {
+          exitSplitMode();
+          setImage(null);
+        } else if (leftMatches && compareRight) {
+          setCompareLeft(compareRight);
+          setCompareRight(null);
+          setEditTarget("left");
+          setImage(compareRight.image);
+          activeAlbumIdRef.current = compareRight.albumId || null;
+        } else if (rightMatches) {
+          setCompareRight(null);
+          if (editTarget === "right" && compareLeft) {
+            setEditTarget("left");
+            setImage(compareLeft.image);
+            activeAlbumIdRef.current = compareLeft.albumId || null;
+          }
+        }
+      }
+
+      if (activeAlbumIdRef.current === null && image) {
+        const stillExists = getAlbums().some((album) =>
+          album.steps.some((step) => step.image === image),
+        );
+        if (!stillExists) {
+          setImage(null);
+          setPreviousImage(null);
+          clearMask();
+        }
+      }
+    },
+    [
+      clearMask,
+      compareLeft,
+      compareRight,
+      editTarget,
+      exitSplitMode,
+      image,
+      splitMode,
+    ],
+  );
+
+  const hasEditImage = splitMode
+    ? Boolean(editTarget === "left" ? compareLeft?.image : compareRight?.image)
+    : Boolean(image);
+
+  const handleSubmit = hasEditImage ? handleEdit : handleGenerate;
+
+  const editorPanel = (
+    <>
+      {error && <div className="remorph__error">{error}</div>}
+
+      {busy && hasEditImage && (
+        <div className="remorph__loading">
+          <span className="remorph__spinner" aria-hidden />
+          Working...
+        </div>
+      )}
+
+      <section className="remorph__section">
+        <h2 className="remorph__section-title">Source</h2>
+        <div className="remorph__btn-row">
+          <button
+            type="button"
+            className="remorph__btn remorph__btn--secondary"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={busy}
+          >
+            Upload photo
+          </button>
+          {previousImage && (
+            <button
+              type="button"
+              className="remorph__btn remorph__btn--secondary"
+              onClick={handleUndo}
+              disabled={busy}
+            >
+              Undo
+            </button>
+          )}
+        </div>
+        <input
+          ref={fileInputRef}
+          className="remorph__file-input"
+          type="file"
+          accept="image/*"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) void handleUpload(file);
+            event.target.value = "";
+          }}
+        />
+      </section>
+
+      <PromptBar
+        mode={hasEditImage ? "edit" : "generate"}
+        prompt={prompt}
+        onPromptChange={setPrompt}
+        onSubmit={() => void handleSubmit()}
+        busy={busy}
+        brushSize={brushSize}
+        onBrushSizeChange={setBrushSize}
+        brushMode={brushMode}
+        onBrushModeChange={setBrushMode}
+        onClearMask={clearMask}
+        hasImage={hasEditImage}
+      />
+    </>
+  );
 
   return (
     <div className="remorph__shell">
@@ -193,9 +579,27 @@ export default function RemorphPage() {
         </p>
       </header>
 
-      <div className="remorph__workspace">
-        <div className="remorph__stage-wrap">
-          {image ? (
+      <div
+        className={`remorph__workspace ${splitMode ? "remorph__workspace--split" : ""}`}
+      >
+        <div
+          className={`remorph__stage-wrap ${dropHover ? "is-drop-target" : ""}`}
+          onDragOver={handleStageDragOver}
+          onDragLeave={handleStageDragLeave}
+          onDrop={handleStageDrop}
+        >
+          {splitMode && compareLeft && compareRight ? (
+            <SplitStage
+              ref={maskRef}
+              left={compareLeft}
+              right={compareRight}
+              editTarget={editTarget}
+              onSelectTarget={handleSelectEditTarget}
+              brushSize={brushSize}
+              brushMode={brushMode}
+              disabled={busy}
+            />
+          ) : image ? (
             <ImageStage
               ref={maskRef}
               image={image}
@@ -206,6 +610,9 @@ export default function RemorphPage() {
           ) : (
             <div className="remorph__stage-empty">
               <p>Upload a close-up skin photo or generate one with AI.</p>
+              <p className="remorph__stage-empty-hint">
+                Drag a history thumbnail here to compare side by side.
+              </p>
               {busy && (
                 <div className="remorph__loading">
                   <span className="remorph__spinner" aria-hidden />
@@ -214,73 +621,29 @@ export default function RemorphPage() {
               )}
             </div>
           )}
-        </div>
 
-        <div className="remorph__panel">
-          {error && <div className="remorph__error">{error}</div>}
-
-          {busy && image && (
-            <div className="remorph__loading">
-              <span className="remorph__spinner" aria-hidden />
-              Working...
+          {dropHover && (
+            <div className="remorph__drop-overlay" aria-hidden>
+              Split screen
             </div>
           )}
-
-          <section className="remorph__section">
-            <h2 className="remorph__section-title">Source</h2>
-            <div className="remorph__btn-row">
-              <button
-                type="button"
-                className="remorph__btn remorph__btn--secondary"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={busy}
-              >
-                Upload photo
-              </button>
-              {previousImage && (
-                <button
-                  type="button"
-                  className="remorph__btn remorph__btn--secondary"
-                  onClick={handleUndo}
-                  disabled={busy}
-                >
-                  Undo
-                </button>
-              )}
-            </div>
-            <input
-              ref={fileInputRef}
-              className="remorph__file-input"
-              type="file"
-              accept="image/*"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) void handleUpload(file);
-                event.target.value = "";
-              }}
-            />
-          </section>
-
-          <PromptBar
-            mode={image ? "edit" : "generate"}
-            prompt={prompt}
-            onPromptChange={setPrompt}
-            onSubmit={() => void handleSubmit()}
-            busy={busy}
-            brushSize={brushSize}
-            onBrushSizeChange={setBrushSize}
-            brushMode={brushMode}
-            onBrushModeChange={setBrushMode}
-            onClearMask={clearMask}
-            hasImage={Boolean(image)}
-          />
         </div>
+
+        {!splitMode && <div className="remorph__panel">{editorPanel}</div>}
       </div>
+
+      {splitMode && (
+        <DraggableEditorPanel onClose={exitSplitMode}>
+          {editorPanel}
+        </DraggableEditorPanel>
+      )}
 
       <HistoryPanel
         albums={albums}
         onAlbumsChange={refreshAlbums}
         onSelectImage={handleSelectHistoryImage}
+        onDeleteStep={handleDeleteStep}
+        onDeleteAlbum={handleDeleteAlbum}
       />
     </div>
   );

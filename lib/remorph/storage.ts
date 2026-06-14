@@ -79,6 +79,32 @@ export function deleteAlbum(albumId: string): void {
   writeAlbums(getAlbums().filter((entry) => entry.id !== albumId));
 }
 
+export type DeleteStepResult = {
+  albumRemoved: boolean;
+};
+
+export function deleteAlbumStep(
+  albumId: string,
+  stepId: string,
+): DeleteStepResult | null {
+  if (!isBrowser()) return null;
+
+  const albums = getAlbums();
+  const album = albums.find((entry) => entry.id === albumId);
+  if (!album) return null;
+
+  album.steps = album.steps.filter((step) => step.id !== stepId);
+
+  if (album.steps.length === 0) {
+    deleteAlbum(albumId);
+    return { albumRemoved: true };
+  }
+
+  album.updatedAt = Date.now();
+  saveAlbum(album);
+  return { albumRemoved: false };
+}
+
 export function formatAlbumTime(timestamp: number): string {
   return new Date(timestamp).toLocaleString(undefined, {
     month: "short",
