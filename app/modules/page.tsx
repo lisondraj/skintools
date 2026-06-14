@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { SlideCanvas } from "@/components/modules/SlideCanvas";
 import { SlideThumbnails } from "@/components/modules/SlideThumbnails";
-import { Toolbar } from "@/components/modules/Toolbar";
 import { ImageLibrary } from "@/components/modules/ImageLibrary";
 import { PresentMode } from "@/components/modules/PresentMode";
 import { autofillText } from "@/lib/modules/client";
@@ -41,9 +40,7 @@ export default function ModulesPage() {
 
   const activeSlide = deck?.slides[activeIndex];
 
-  const refreshDeck = useCallback(() => {
-    setDeck(getDeck());
-  }, []);
+  const refreshDeck = useCallback(() => setDeck(getDeck()), []);
 
   const updateElements = useCallback(
     (elements: SlideElement[]) => {
@@ -71,7 +68,6 @@ export default function ModulesPage() {
   async function handleAutofill(mode: AutofillMode, prompt?: string) {
     if (!deck || !activeSlide || activeSlide.kind !== "content") return;
     const selected = activeSlide.elements.find((el) => el.id === selectedElementId);
-
     setAutofillBusy(true);
     setError("");
     try {
@@ -82,7 +78,6 @@ export default function ModulesPage() {
         deckTitle: deck.title,
         slideContext: `Slide ${activeIndex + 1}`,
       });
-
       if (mode === "generate") {
         const el = createTextElement(text, nextElementZ(activeSlide.elements));
         updateElements([...activeSlide.elements, el]);
@@ -107,41 +102,91 @@ export default function ModulesPage() {
 
   if (!deck || !activeSlide) {
     return (
-      <div className="modules__shell">
-        <div className="modules-loading">
-          <span className="modules-spinner" />
-          Loading deck…
-        </div>
+      <div className="modules__loading">
+        <span className="modules-spinner" />
+        Loading…
       </div>
     );
   }
 
   const selectedEl = activeSlide.elements.find((el) => el.id === selectedElementId);
+  const isContent = activeSlide.kind === "content";
+  const selectedIsText = selectedEl?.kind === "text";
 
   return (
-    <div className="modules__shell">
-      <header className="modules__header">
-        <Link href="/modules" className="modules__logo">
-          Modules
-        </Link>
-        <input
-          className="modules__title-input"
-          value={deck.title}
-          onChange={(e) => {
-            const next = updateDeckTitle(e.target.value);
-            if (next) setDeck(next);
-          }}
-          aria-label="Presentation title"
-        />
+    <div className="modules__app">
+      {/* ── Top bar ─────────────────────────────────────────────── */}
+      <header className="modules__topbar">
+        <div className="modules__topbar-left">
+          <Link href="/" className="modules__home-link" aria-label="Back to home">
+            ←
+          </Link>
+          <span className="modules__divider" aria-hidden />
+          <input
+            className="modules__title-input"
+            value={deck.title}
+            onChange={(e) => {
+              const next = updateDeckTitle(e.target.value);
+              if (next) setDeck(next);
+            }}
+            aria-label="Presentation title"
+          />
+        </div>
+
+        <nav className="modules__topbar-actions" aria-label="Slide tools">
+          {isContent && (
+            <>
+              <button type="button" className="modules-action-btn" onClick={handleAddText}>
+                Text
+              </button>
+              <button type="button" className="modules-action-btn" onClick={() => setLibraryOpen(true)}>
+                Image
+              </button>
+              <span className="modules__divider" aria-hidden />
+              <button
+                type="button"
+                className="modules-action-btn"
+                disabled={autofillBusy}
+                onClick={() => {
+                  const prompt = window.prompt("What should this text box say?");
+                  if (prompt?.trim()) void handleAutofill("generate", prompt.trim());
+                }}
+              >
+                {autofillBusy ? "Working…" : "AI Generate"}
+              </button>
+              {selectedIsText && (
+                <>
+                  <button type="button" className="modules-action-btn" disabled={autofillBusy} onClick={() => void handleAutofill("rewrite")}>Rewrite</button>
+                  <button type="button" className="modules-action-btn" disabled={autofillBusy} onClick={() => void handleAutofill("expand")}>Expand</button>
+                  <button type="button" className="modules-action-btn" disabled={autofillBusy} onClick={() => void handleAutofill("shorten")}>Shorten</button>
+                </>
+              )}
+              <span className="modules__divider" aria-hidden />
+            </>
+          )}
+          <button
+            type="button"
+            className="modules-action-btn modules-action-btn--primary"
+            onClick={() => setPresenting(true)}
+          >
+            Present
+          </button>
+        </nav>
       </header>
 
-      {error && <div className="modules-error">{error}</div>}
+      {error && (
+        <div className="modules-error" role="alert">
+          {error}
+          <button type="button" className="modules-error__dismiss" onClick={() => setError("")}>×</button>
+        </div>
+      )}
 
+      {/* ── Workspace ───────────────────────────────────────────── */}
       <div className="modules__workspace">
         <SlideThumbnails
           slides={deck.slides}
           activeIndex={activeIndex}
-          onSelect={setActiveIndex}
+          onSelect={(i) => { setActiveIndex(i); setSelectedElementId(null); }}
           onAdd={(kind) => {
             const next = addSlide(kind);
             if (next) {
@@ -172,16 +217,6 @@ export default function ModulesPage() {
             }}
           />
         </main>
-
-        <Toolbar
-          onAddText={handleAddText}
-          onAddImage={() => setLibraryOpen(true)}
-          onPresent={() => setPresenting(true)}
-          onAutofill={(mode, prompt) => void handleAutofill(mode, prompt)}
-          autofillBusy={autofillBusy}
-          hasSelection={Boolean(selectedElementId)}
-          selectedIsText={selectedEl?.kind === "text"}
-        />
       </div>
 
       <ImageLibrary
