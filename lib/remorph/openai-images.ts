@@ -45,7 +45,6 @@ function generationBody(
     prompt: buildLesionPrompt(userPrompt),
     size: "1024x1024",
     quality: qualityForMode(qualityMode),
-    response_format: "b64_json",
     output_format: "jpeg",
     output_compression: 85,
     ...(stream ? { stream: true, partial_images: 2 } : {}),
