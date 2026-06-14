@@ -80,7 +80,8 @@ function paneFromImage(
 export default function RemorphPage() {
   const [image, setImage] = useState<string | null>(null);
   const [previousImage, setPreviousImage] = useState<string | null>(null);
-  const [prompt, setPrompt] = useState("");
+  const [generatePrompt, setGeneratePrompt] = useState("");
+  const [editPrompt, setEditPrompt] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [brushSize, setBrushSize] = useState(36);
@@ -212,7 +213,7 @@ export default function RemorphPage() {
   );
 
   const handleGenerate = useCallback(async () => {
-    const trimmed = prompt.trim();
+    const trimmed = generatePrompt.trim();
     if (!trimmed) return;
 
     setError(null);
@@ -228,6 +229,7 @@ export default function RemorphPage() {
       setSplitDropHint(false);
       startAlbum(makeStep(normalized, "generate", trimmed), trimmed);
       setPromptEntryOpen(false);
+      setGeneratePrompt("");
     } catch (generateError) {
       setError(
         generateError instanceof Error
@@ -237,7 +239,7 @@ export default function RemorphPage() {
     } finally {
       setBusy(false);
     }
-  }, [clearMask, exitSplitMode, prompt, splitMode, startAlbum]);
+  }, [clearMask, exitSplitMode, generatePrompt, splitMode, startAlbum]);
 
   const handleEdit = useCallback(async () => {
     const sourceImage = splitMode
@@ -247,7 +249,7 @@ export default function RemorphPage() {
       : image;
 
     if (!sourceImage) return;
-    const trimmed = prompt.trim();
+    const trimmed = editPrompt.trim();
     if (!trimmed) return;
 
     const targetPane = splitMode
@@ -317,8 +319,8 @@ export default function RemorphPage() {
     compareLeft,
     compareRight,
     editTarget,
+    editPrompt,
     image,
-    prompt,
     splitMode,
   ]);
 
@@ -555,8 +557,8 @@ export default function RemorphPage() {
               promptOpen={promptEntryOpen}
               onPromptOpen={() => setPromptEntryOpen(true)}
               onPromptClose={() => setPromptEntryOpen(false)}
-              prompt={prompt}
-              onPromptChange={setPrompt}
+              prompt={generatePrompt}
+              onPromptChange={setGeneratePrompt}
               onPromptSubmit={() => void handleGenerate()}
               onHistoryDrop={handleHistoryEntryDrop}
               busy={busy}
@@ -565,8 +567,8 @@ export default function RemorphPage() {
           </section>
 
           <PromptBar
-            prompt={prompt}
-            onPromptChange={setPrompt}
+            prompt={editPrompt}
+            onPromptChange={setEditPrompt}
             onSubmit={() => void handleEdit()}
             busy={busy}
           />
@@ -608,8 +610,8 @@ export default function RemorphPage() {
               onUploadClick={() => fileInputRef.current?.click()}
               promptOpen={promptEntryOpen}
               onPromptOpen={() => setPromptEntryOpen(true)}
-              prompt={prompt}
-              onPromptChange={setPrompt}
+              prompt={generatePrompt}
+              onPromptChange={setGeneratePrompt}
               onPromptSubmit={() => void handleGenerate()}
               onHistoryDrop={handleHistoryEntryDrop}
               busy={busy}

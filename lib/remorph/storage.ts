@@ -77,23 +77,41 @@ async function writeAlbumsToIdb(albums: RemorphAlbum[]): Promise<void> {
   });
 }
 
-function readLegacyLocalStorage(): RemorphAlbum[] | null {
+function purgeLegacyLocalStorage(): RemorphAlbum[] | null {
   if (!isBrowser()) return null;
+
+  let result: RemorphAlbum[] | null = null;
 
   try {
     const raw = window.localStorage.getItem(LEGACY_STORAGE_KEY);
-    if (!raw) return null;
-
-    const parsed = JSON.parse(raw) as RemorphAlbum[];
-    window.localStorage.removeItem(LEGACY_STORAGE_KEY);
-    return Array.isArray(parsed) ? parsed : null;
-  } catch {
-    try {
-      window.localStorage.removeItem(LEGACY_STORAGE_KEY);
-    } catch {
-      /* ignore */
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as RemorphAlbum[];
+        if (Array.isArray(parsed)) result = parsed;
+      } catch {
+        /* ignore parse errors */
+      }
     }
-    return null;
+  } catch {
+    /* localStorage may be inaccessible */
+  }
+
+  try {
+    window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+  } catch {
+    /* ignore — key removal failing is non-critical */
+  }
+
+  return result;
+}
+
+/* Eagerly clear the key on module load so oversized data can't trigger
+   quota errors on any subsequent localStorage operations elsewhere. */
+if (isBrowser()) {
+  try {
+    window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+  } catch {
+    /* ignore */
   }
 }
 
@@ -173,7 +191,7 @@ export async function hydrateAlbums(): Promise<RemorphAlbum[]> {
     let albums = await readAlbumsFromIdb();
 
     if (albums.length === 0) {
-      const legacy = readLegacyLocalStorage();
+      const legacy = purgeLegacyLocalStorage();
       if (legacy?.length) {
         albums = legacy.sort((left, right) => right.updatedAt - left.updatedAt);
       }
