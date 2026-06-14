@@ -138,7 +138,7 @@ function AlbumStackLayer({
         {isLatest && (
           <span className="remorph-album__overlay">
             <span className="remorph-album__overlay-title">
-              {truncateTitle(album.title, 42)}
+              {truncateTitle(album.title, 28)}
             </span>
             <span className="remorph-album__overlay-date">
               {formatAlbumTime(album.updatedAt)}

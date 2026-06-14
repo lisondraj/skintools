@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { ArrowSubmitIcon } from "@/components/remorph/ArrowSubmitIcon";
 import { REMORPH_DRAG_MIME, type RemorphDragStep } from "@/lib/remorph/types";
 
 type EntryBoxesProps = {
+  variant?: "landing" | "panel";
   onUploadClick: () => void;
   promptOpen: boolean;
   onPromptOpen: () => void;
@@ -16,6 +18,7 @@ type EntryBoxesProps = {
 };
 
 export function EntryBoxes({
+  variant = "landing",
   onUploadClick,
   promptOpen,
   onPromptOpen,
@@ -53,7 +56,9 @@ export function EntryBoxes({
   };
 
   return (
-    <div className="remorph-entry">
+    <div
+      className={`remorph-entry ${variant === "panel" ? "remorph-entry--panel" : ""}`}
+    >
       <button
         type="button"
         className="remorph-entry__box"
@@ -86,7 +91,6 @@ export function EntryBoxes({
                 }
               }}
             />
-            <span className="remorph-entry__prompt-hint">Enter to generate</span>
             <button
               type="button"
               className="remorph-entry__prompt-submit"
@@ -94,7 +98,7 @@ export function EntryBoxes({
               onClick={onPromptSubmit}
               disabled={busy || !prompt.trim()}
             >
-              →
+              <ArrowSubmitIcon />
             </button>
           </div>
         ) : (

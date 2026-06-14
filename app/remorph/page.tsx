@@ -7,7 +7,6 @@ import { HistoryPanel } from "@/components/remorph/HistoryPanel";
 import { ImageStage } from "@/components/remorph/ImageStage";
 import { PromptBar } from "@/components/remorph/PromptBar";
 import { SplitStage } from "@/components/remorph/SplitStage";
-import { SourceMenu } from "@/components/remorph/SourceMenu";
 import type { MaskCanvasHandle } from "@/components/remorph/MaskCanvas";
 import { editImage, generateImage } from "@/lib/remorph/client";
 import { normalizeToStage, readFileAsDataUrl } from "@/lib/remorph/image-utils";
@@ -333,22 +332,6 @@ export default function RemorphPage() {
     setError(null);
   }, [clearMask, compareLeft, compareRight, editTarget, previousImage, splitMode]);
 
-  const handlePromptFocus = useCallback(() => {
-    if (!image && !splitMode) {
-      setPromptEntryOpen(true);
-      return;
-    }
-    document.getElementById("remorph-prompt")?.focus();
-  }, [image, splitMode]);
-
-  const handleSplitFromHistoryMenu = useCallback(() => {
-    setSplitDropHint(true);
-    document.querySelector(".remorph-history")?.scrollIntoView({
-      behavior: "smooth",
-      block: "nearest",
-    });
-  }, []);
-
   const handleSelectHistoryImage = useCallback(
     (selected: string, albumId: string) => {
       if (splitMode) exitSplitMode();
@@ -547,8 +530,6 @@ export default function RemorphPage() {
     ? Boolean(editTarget === "left" ? compareLeft?.image : compareRight?.image)
     : Boolean(image);
 
-  const handleSubmit = hasEditImage ? handleEdit : handleGenerate;
-
   const editorPanel = (
     <>
       {error && <div className="remorph__error">{error}</div>}
@@ -561,40 +542,41 @@ export default function RemorphPage() {
       )}
 
       {hasEditImage && (
-        <div className="remorph__panel-toolbar">
-          <SourceMenu
-            onUpload={() => fileInputRef.current?.click()}
-            onPrompt={handlePromptFocus}
-            onSplitFromHistory={handleSplitFromHistoryMenu}
-            disabled={busy}
-            hasImage={hasEditImage}
+        <>
+          <section className="remorph__section remorph__section--sources">
+            <EntryBoxes
+              variant="panel"
+              onUploadClick={() => fileInputRef.current?.click()}
+              promptOpen={promptEntryOpen}
+              onPromptOpen={() => setPromptEntryOpen(true)}
+              prompt={prompt}
+              onPromptChange={setPrompt}
+              onPromptSubmit={() => void handleGenerate()}
+              onHistoryDrop={handleHistoryEntryDrop}
+              busy={busy}
+              historyDropActive={splitDropHint || dropHover}
+            />
+          </section>
+
+          <PromptBar
+            prompt={prompt}
+            onPromptChange={setPrompt}
+            onSubmit={() => void handleEdit()}
+            busy={busy}
           />
+
           {previousImage && (
             <button
               type="button"
-              className="remorph__btn remorph__btn--secondary remorph__btn--compact"
+              className="remorph__btn remorph__btn--secondary remorph__btn--compact remorph__undo-btn"
               onClick={handleUndo}
               disabled={busy}
             >
-              Undo
+              Undo last edit
             </button>
           )}
-        </div>
+        </>
       )}
-
-      <PromptBar
-        mode={hasEditImage ? "edit" : "generate"}
-        prompt={prompt}
-        onPromptChange={setPrompt}
-        onSubmit={() => void handleSubmit()}
-        busy={busy}
-        brushSize={brushSize}
-        onBrushSizeChange={setBrushSize}
-        brushMode={brushMode}
-        onBrushModeChange={setBrushMode}
-        onClearMask={clearMask}
-        hasImage={hasEditImage}
-      />
     </>
   );
 

@@ -1,6 +1,6 @@
 import { getOpenAiKey, getOpenAiModel } from "@/lib/skinlog/env";
 
-const TITLE_PROMPT = `Look at this clinical close-up skin photo and write a short album title (4–8 words) describing what is shown. Use morphological language only — no diagnosis. Return JSON only: { "title": "..." }`;
+const TITLE_PROMPT = `Look at this clinical close-up skin photo. Write a very short label (2–4 words) describing the main visible finding. Examples: "Scaly oval patch", "Dark macule", "Pink papule cluster". Morphological language only — no diagnosis. Return JSON only: { "title": "..." }`;
 
 export async function titleRemorphImage(photo: string): Promise<string> {
   const apiKey = getOpenAiKey();
