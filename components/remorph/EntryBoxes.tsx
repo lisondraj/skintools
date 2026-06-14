@@ -70,7 +70,7 @@ export function EntryBoxes({
         className={`remorph-entry__box remorph-entry__box--prompt ${promptOpen ? "is-open" : ""}`}
       >
         {promptOpen ? (
-          <>
+          <div className="remorph-entry__prompt-shell">
             <textarea
               ref={promptRef}
               id="remorph-entry-prompt"
@@ -87,7 +87,16 @@ export function EntryBoxes({
               }}
             />
             <span className="remorph-entry__prompt-hint">Enter to generate</span>
-          </>
+            <button
+              type="button"
+              className="remorph-entry__prompt-submit"
+              aria-label="Generate image"
+              onClick={onPromptSubmit}
+              disabled={busy || !prompt.trim()}
+            >
+              →
+            </button>
+          </div>
         ) : (
           <button
             type="button"
