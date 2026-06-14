@@ -8,7 +8,7 @@ type FacingMode = "environment" | "user";
 type CameraViewProps = {
   prompt?: string;
   stepLabel?: string;
-  onCapture: (photo: string) => void;
+  onCapture: (photo: string) => void | Promise<void>;
   disabled?: boolean;
   /** Rendered inside the bottom overlay — use for mode toggle etc. */
   children?: ReactNode;
@@ -95,7 +95,7 @@ export function CameraView({
     setCapturing(true);
     try {
       const photo = await captureVideoFrame(video);
-      onCapture(photo);
+      await Promise.resolve(onCapture(photo));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Capture failed.");
     } finally {

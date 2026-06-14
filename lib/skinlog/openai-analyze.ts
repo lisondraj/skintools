@@ -134,7 +134,7 @@ export async function analyzeSkinPhoto(
     },
   }));
 
-  if (lesions.length === 0) {
+  if (lesions.length === 0 && mode === "single") {
     throw new Error(
       "No findings were detected in this photo. Try better lighting or move closer.",
     );

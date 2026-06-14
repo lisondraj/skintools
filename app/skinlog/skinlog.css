@@ -615,7 +615,13 @@ html:has(.skinlog-capture-screen) body {
   color: var(--skinlog-muted);
 }
 
+.skinlog-history-entry__count {
+  font-size: 13px;
+  color: var(--skinlog-muted);
+}
+
 .skinlog-history-entry__delete {
+  margin-left: auto;
   padding: 6px 10px;
   border: 1px solid var(--skinlog-border);
   border-radius: 8px;
@@ -632,6 +638,20 @@ html:has(.skinlog-capture-screen) body {
   color: var(--skinlog-muted);
   font-size: 15px;
   line-height: 1.5;
+}
+
+.skinlog-history-photo-group {
+  margin-bottom: 20px;
+}
+
+.skinlog-history-photo-group:last-child {
+  margin-bottom: 0;
+}
+
+.skinlog-history-entry__empty {
+  margin: 0;
+  font-size: 14px;
+  color: var(--skinlog-muted);
 }
 
 .skinlog-review-actions {

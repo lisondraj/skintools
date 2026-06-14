@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AnnotatedPhoto } from "@/components/skinlog/AnnotatedPhoto";
 import { CameraView } from "@/components/skinlog/CameraView";
+import { FindingList } from "@/components/skinlog/FindingList";
 import { LesionBlock } from "@/components/skinlog/LesionBlock";
 import { ModeToggle } from "@/components/skinlog/ModeToggle";
 import { generateLesionsFromCapture } from "@/lib/skinlog/detection";
@@ -51,32 +52,32 @@ export default function SkinLogCapturePage() {
 
   async function handleCapture(photo: string) {
     setPhase("analyzing");
+    const scanMode = mode;
 
     try {
-      const result = await generateLesionsFromCapture(photo, mode);
+      const result = await generateLesionsFromCapture(photo, scanMode);
       const stored: StoredLesion[] = result.lesions.map((l) => ({
         ...l,
         id: crypto.randomUUID(),
         photo,
       }));
 
-      if (isFullBody) {
+      if (scanMode === "full-body") {
         setLesions((prev) => [...prev, ...stored]);
-        if (stepIndex < FULL_BODY_STEPS.length - 1) {
-          setStepIndex((i) => i + 1);
+        const isLastStep = stepIndex >= FULL_BODY_STEPS.length - 1;
+        if (!isLastStep) {
+          setStepIndex((current) => current + 1);
           setPhase("capture");
-          return;
+        } else {
+          setPhase("review");
         }
-      } else {
-        setLesions(stored);
+        return;
       }
 
+      setLesions(stored);
       setPhase("review");
     } catch (err) {
-      // Error is shown inside CameraView via its own state;
-      // return to capture so the user can retry.
       setPhase("capture");
-      // Re-throw so CameraView surface shows the message.
       throw err;
     }
   }
@@ -155,20 +156,7 @@ export default function SkinLogCapturePage() {
         {mode === "single" && lesions.length > 0 ? (
           <>
             <AnnotatedPhoto photo={lesions[0].photo} lesions={lesions} />
-
-            <div className="skinlog-finding-list">
-              {lesions.map((lesion, index) => (
-                <div key={lesion.id} className="skinlog-finding">
-                  <div className="skinlog-finding__header">
-                    <span className="skinlog-finding__number">{index + 1}</span>
-                    <span className="skinlog-finding__location">
-                      {lesion.bodyLocation ?? "Location unspecified"}
-                    </span>
-                  </div>
-                  <p className="skinlog-finding__desc">{lesion.description}</p>
-                </div>
-              ))}
-            </div>
+            <FindingList lesions={lesions} />
           </>
         ) : (
           /* Full body: existing LesionBlock with attributes */

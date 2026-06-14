@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { LesionBlock } from "@/components/skinlog/LesionBlock";
+import { AnnotatedPhoto } from "@/components/skinlog/AnnotatedPhoto";
+import { FindingList } from "@/components/skinlog/FindingList";
+import { groupLesionsByPhoto } from "@/lib/skinlog/lesions";
 import {
   deleteEntry,
   formatDisplayDate,
@@ -11,6 +13,37 @@ import {
   sortDateKeys,
 } from "@/lib/skinlog/storage";
 import type { ScanEntry } from "@/lib/skinlog/types";
+
+function HistoryEntryBody({ entry }: { entry: ScanEntry }) {
+  if (entry.lesions.length === 0) {
+    return (
+      <p className="skinlog-history-entry__empty">No findings recorded.</p>
+    );
+  }
+
+  if (entry.mode === "single") {
+    return (
+      <>
+        <AnnotatedPhoto
+          photo={entry.lesions[0].photo}
+          lesions={entry.lesions}
+        />
+        <FindingList lesions={entry.lesions} />
+      </>
+    );
+  }
+
+  return (
+    <>
+      {groupLesionsByPhoto(entry.lesions).map((group) => (
+        <div key={group[0].photo} className="skinlog-history-photo-group">
+          <AnnotatedPhoto photo={group[0].photo} lesions={group} />
+          <FindingList lesions={group} />
+        </div>
+      ))}
+    </>
+  );
+}
 
 export default function SkinLogHistoryPage() {
   const [entries, setEntries] = useState<ScanEntry[]>([]);
@@ -63,6 +96,10 @@ export default function SkinLogHistoryPage() {
                     <span className="skinlog-history-entry__mode">
                       {entry.mode === "single" ? "Single lesion" : "Full body"}
                     </span>
+                    <span className="skinlog-history-entry__count">
+                      {entry.lesions.length} finding
+                      {entry.lesions.length === 1 ? "" : "s"}
+                    </span>
                     <button
                       type="button"
                       className="skinlog-history-entry__delete"
@@ -72,9 +109,7 @@ export default function SkinLogHistoryPage() {
                     </button>
                   </div>
 
-                  {entry.lesions.map((lesion) => (
-                    <LesionBlock key={lesion.id} lesion={lesion} compact />
-                  ))}
+                  <HistoryEntryBody entry={entry} />
                 </div>
               ))}
             </section>
