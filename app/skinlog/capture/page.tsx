@@ -116,7 +116,7 @@ export default function SkinLogCapturePage() {
         {/* Logo floats above the camera */}
         <div className="skinlog-capture-screen__header">
           <Link href="/skinlog" className="skinlog-capture-screen__logo">
-            SkinLog
+            Skin Archive
           </Link>
         </div>
 
@@ -147,7 +147,7 @@ export default function SkinLogCapturePage() {
     <div className="skinlog__inner">
       <header className="skinlog__header">
         <Link href="/skinlog" className="skinlog__logo">
-          SkinLog
+          Skin Archive
         </Link>
       </header>
 

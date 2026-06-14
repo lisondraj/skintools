@@ -64,7 +64,7 @@ export default function SkinLogHistoryPage() {
     <div className="skinlog__inner">
       <header className="skinlog__header">
         <Link href="/skinlog" className="skinlog__logo">
-          SkinLog
+          Skin Archive
         </Link>
       </header>
 

@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./skinlog.css";
 
 export const metadata: Metadata = {
-  title: "SkinLog",
+  title: "Skin Archive",
   description: "Track skin changes over time for personal reference.",
 };
 
