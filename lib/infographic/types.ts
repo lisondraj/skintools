@@ -75,7 +75,18 @@ export interface InfographicDoc {
   variant: "A" | "B";
   vw: number;
   vh: number;
+  /** gpt-image-2 generated design background (text-free) */
+  backgroundImage: string;
   elements: IGElement[];
+}
+
+export interface DesignReq {
+  diagnosis: string;
+}
+
+export interface DesignRes {
+  imageA: string;
+  imageB: string;
 }
 
 export interface GenerateReq {

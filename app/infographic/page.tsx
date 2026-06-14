@@ -29,6 +29,9 @@ export default function InfographicPage() {
   const [activeDoc, setActiveDoc] = useState<InfographicDoc | null>(null);
 
   const [hoveredVariant, setHoveredVariant] = useState<"A" | "B" | null>(null);
+  const [generatingPhase, setGeneratingPhase] = useState<
+    "content" | "designs" | null
+  >(null);
 
   const diagnosisRef = useRef<HTMLInputElement>(null);
   const lang = customLang.trim() || language;
@@ -68,6 +71,7 @@ export default function InfographicPage() {
     }
     setError("");
     setStep("generating");
+    setGeneratingPhase("content");
 
     try {
       const res = await fetch("/api/infographic/generate", {
@@ -88,21 +92,45 @@ export default function InfographicPage() {
       if (!res.ok || data.error) {
         setError(data.error ?? "Generation failed.");
         setStep("input");
+        setGeneratingPhase(null);
         return;
       }
 
       const generatedContent = data.content!;
-      const a = buildTemplateA(generatedContent);
-      const b = buildTemplateB(generatedContent);
+
+      setGeneratingPhase("designs");
+      const designRes = await fetch("/api/infographic/design", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ diagnosis: diagnosis.trim() }),
+      });
+
+      const designData = (await designRes.json()) as {
+        imageA?: string;
+        imageB?: string;
+        error?: string;
+      };
+
+      if (!designRes.ok || designData.error) {
+        setError(designData.error ?? "Design generation failed.");
+        setStep("input");
+        setGeneratingPhase(null);
+        return;
+      }
+
+      const a = buildTemplateA(generatedContent, designData.imageA!);
+      const b = buildTemplateB(generatedContent, designData.imageB!);
 
       setContent(generatedContent);
       setDocA(a);
       setDocB(b);
       setActiveDoc(null);
+      setGeneratingPhase(null);
       setStep("preview");
     } catch {
       setError("Network error. Please try again.");
       setStep("input");
+      setGeneratingPhase(null);
     }
   }
 
@@ -251,7 +279,9 @@ export default function InfographicPage() {
                 {step === "generating" ? (
                   <>
                     <span className="ig__spinner" />
-                    Generating infographics…
+                    {generatingPhase === "designs"
+                      ? "Generating design images…"
+                      : "Generating content…"}
                   </>
                 ) : (
                   "Generate infographics"
@@ -272,14 +302,14 @@ export default function InfographicPage() {
                 <div className="ig__how-num">02</div>
                 <div className="ig__how-text">
                   <strong>Choose a style</strong>
-                  <span>Two layouts generated side by side</span>
+                  <span>Two AI-generated designs side by side</span>
                 </div>
               </div>
               <div className="ig__how-step">
                 <div className="ig__how-num">03</div>
                 <div className="ig__how-text">
                   <strong>Edit &amp; export</strong>
-                  <span>Resize, reposition, edit text — export as PNG or SVG</span>
+                  <span>Edit text overlays — export as PNG or SVG</span>
                 </div>
               </div>
             </div>

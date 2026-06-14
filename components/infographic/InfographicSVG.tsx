@@ -90,8 +90,22 @@ export const InfographicSVG = forwardRef<SVGSVGElement, Props>(
         ref={ref}
         viewBox={`0 0 ${doc.vw} ${doc.vh}`}
         xmlns="http://www.w3.org/2000/svg"
+        xmlnsXlink="http://www.w3.org/1999/xlink"
         {...svgProps}
       >
+        {/* GPT-generated design background (non-interactive) */}
+        {doc.backgroundImage && (
+          <image
+            href={doc.backgroundImage}
+            x={0}
+            y={0}
+            width={doc.vw}
+            height={doc.vh}
+            preserveAspectRatio="xMidYMid slice"
+            pointerEvents="none"
+          />
+        )}
+
         {doc.elements.map((el) => (
           <g key={el.id} data-id={el.id}>
             {renderElement(el, el.id)}

@@ -369,7 +369,7 @@ export function InfographicEditor({ doc, onBack }: Props) {
         </button>
         <div className="ig-editor__toolbar-center">
           <span className="ig-editor__hint">
-            Click to select · Drag to move · Double-click text to edit
+            Click text to select · Drag to reposition · Double-click to edit
           </span>
         </div>
         <div className="ig-editor__toolbar-end">
