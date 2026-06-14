@@ -2,18 +2,21 @@
 
 import Link from "next/link";
 import { useState, useCallback } from "react";
-import type { InfographicDesign } from "@/lib/infographic/types";
+import type { InfographicDesign, InfographicQualityMode } from "@/lib/infographic/types";
+import { editDesignImage } from "@/lib/infographic/client";
 import { PRESET_GROUPS } from "@/lib/infographic/presets";
 
 type Props = {
   design: InfographicDesign;
+  qualityMode: InfographicQualityMode;
   onBack: () => void;
 };
 
-export function InfographicEditor({ design, onBack }: Props) {
+export function InfographicEditor({ design, qualityMode: initialQuality, onBack }: Props) {
   const [image, setImage] = useState(design.image);
   const [history, setHistory] = useState<string[]>([design.image]);
   const [prompt, setPrompt] = useState("");
+  const [qualityMode, setQualityMode] = useState<InfographicQualityMode>(initialQuality);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [exportMsg, setExportMsg] = useState("");
@@ -26,27 +29,17 @@ export function InfographicEditor({ design, onBack }: Props) {
       setBusy(true);
       setError("");
       try {
-        const res = await fetch("/api/infographic/edit", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ image, prompt: editPrompt.trim() }),
-        });
-        const data = (await res.json()) as { image?: string; error?: string };
-        if (!res.ok || data.error) {
-          setError(data.error ?? "Edit failed.");
-          return;
-        }
-        const next = data.image!;
+        const next = await editDesignImage(image, editPrompt.trim(), qualityMode);
         setImage(next);
         setHistory((h) => [...h, next]);
         setPrompt("");
-      } catch {
-        setError("Network error. Please try again.");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Edit failed.");
       } finally {
         setBusy(false);
       }
     },
-    [busy, image],
+    [busy, image, qualityMode],
   );
 
   function handleApply() {
@@ -179,9 +172,29 @@ export function InfographicEditor({ design, onBack }: Props) {
           </div>
         ))}
 
-        <p className="ig-editor__hint">
-          Style {design.variant} · Edit with prompts or presets · Undo to revert
-        </p>
+        <div className="ig-editor__footer-row">
+          <div className="ig-quality-toggle">
+            <button
+              type="button"
+              className={`ig-quality-toggle__btn${qualityMode === "fast" ? " is-active" : ""}`}
+              onClick={() => setQualityMode("fast")}
+              disabled={busy}
+            >
+              Fast
+            </button>
+            <button
+              type="button"
+              className={`ig-quality-toggle__btn${qualityMode === "standard" ? " is-active" : ""}`}
+              onClick={() => setQualityMode("standard")}
+              disabled={busy}
+            >
+              Standard
+            </button>
+          </div>
+          <p className="ig-editor__hint">
+            Style {design.variant} · Undo to revert · ⌘↵ to apply
+          </p>
+        </div>
       </div>
     </div>
   );

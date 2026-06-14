@@ -2,7 +2,12 @@
 
 import Link from "next/link";
 import { useState, useRef } from "react";
-import type { InfographicContent, InfographicDesign } from "@/lib/infographic/types";
+import type {
+  InfographicContent,
+  InfographicDesign,
+  InfographicQualityMode,
+} from "@/lib/infographic/types";
+import { streamDesignImage } from "@/lib/infographic/client";
 import { InfographicEditor } from "@/components/infographic/InfographicEditor";
 import "./infographic.css";
 
@@ -19,12 +24,17 @@ export default function InfographicPage() {
   const [instructions, setInstructions] = useState("");
   const [language, setLanguage] = useState("English");
   const [customLang, setCustomLang] = useState("");
+  const [qualityMode, setQualityMode] = useState<InfographicQualityMode>("fast");
   const [error, setError] = useState("");
   const [filling, setFilling] = useState(false);
 
   const [content, setContent] = useState<InfographicContent | null>(null);
   const [designA, setDesignA] = useState<InfographicDesign | null>(null);
   const [designB, setDesignB] = useState<InfographicDesign | null>(null);
+  const [previewA, setPreviewA] = useState<string | null>(null);
+  const [previewB, setPreviewB] = useState<string | null>(null);
+  const [doneA, setDoneA] = useState(false);
+  const [doneB, setDoneB] = useState(false);
   const [activeDesign, setActiveDesign] = useState<InfographicDesign | null>(null);
 
   const [generatingPhase, setGeneratingPhase] = useState<
@@ -70,6 +80,10 @@ export default function InfographicPage() {
     setError("");
     setStep("generating");
     setGeneratingPhase("content");
+    setPreviewA(null);
+    setPreviewB(null);
+    setDoneA(false);
+    setDoneB(false);
 
     try {
       const res = await fetch("/api/infographic/generate", {
@@ -95,35 +109,34 @@ export default function InfographicPage() {
       }
 
       const generatedContent = data.content!;
-
-      setGeneratingPhase("designs");
-      const designRes = await fetch("/api/infographic/design", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: generatedContent, language: lang }),
-      });
-
-      const designData = (await designRes.json()) as {
-        imageA?: string;
-        imageB?: string;
-        error?: string;
-      };
-
-      if (!designRes.ok || designData.error) {
-        setError(designData.error ?? "Design generation failed.");
-        setStep("input");
-        setGeneratingPhase(null);
-        return;
-      }
-
       setContent(generatedContent);
-      setDesignA({ variant: "A", image: designData.imageA! });
-      setDesignB({ variant: "B", image: designData.imageB! });
-      setActiveDesign(null);
-      setGeneratingPhase(null);
+      setGeneratingPhase("designs");
       setStep("preview");
-    } catch {
-      setError("Network error. Please try again.");
+
+      // Stream both variants in parallel
+      const [finalA, finalB] = await Promise.all([
+        streamDesignImage("A", generatedContent, lang, qualityMode, (partial) => {
+          setPreviewA(partial);
+        }).then((img) => {
+          setPreviewA(img);
+          setDoneA(true);
+          return img;
+        }),
+        streamDesignImage("B", generatedContent, lang, qualityMode, (partial) => {
+          setPreviewB(partial);
+        }).then((img) => {
+          setPreviewB(img);
+          setDoneB(true);
+          return img;
+        }),
+      ]);
+
+      setDesignA({ variant: "A", image: finalA });
+      setDesignB({ variant: "B", image: finalB });
+      setGeneratingPhase(null);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Network error. Please try again.";
+      setError(msg);
       setStep("input");
       setGeneratingPhase(null);
     }
@@ -144,13 +157,21 @@ export default function InfographicPage() {
     setActiveDesign(null);
     setDesignA(null);
     setDesignB(null);
+    setPreviewA(null);
+    setPreviewB(null);
+    setDoneA(false);
+    setDoneB(false);
     setContent(null);
   }
 
   if (step === "editor" && activeDesign) {
     return (
       <div className="skinlog__inner ig-shell">
-        <InfographicEditor design={activeDesign} onBack={handleBack} />
+        <InfographicEditor
+          design={activeDesign}
+          qualityMode={qualityMode}
+          onBack={handleBack}
+        />
       </div>
     );
   }
@@ -164,7 +185,7 @@ export default function InfographicPage() {
       </header>
 
       <main className="skinlog__section">
-        {(step === "input" || step === "generating") && (
+        {step === "input" && (
           <>
             <h1 className="skinlog__title">Patient education, made simple.</h1>
             <p className="skinlog__lead">
@@ -191,7 +212,6 @@ export default function InfographicPage() {
                     setDiagnosis(e.target.value);
                     if (error) setError("");
                   }}
-                  disabled={step === "generating"}
                   autoFocus
                 />
               </div>
@@ -205,7 +225,7 @@ export default function InfographicPage() {
                     type="button"
                     className="ig-ai-fill"
                     onClick={handleFillInstructions}
-                    disabled={filling || step === "generating"}
+                    disabled={filling}
                   >
                     {filling ? (
                       <>
@@ -223,7 +243,7 @@ export default function InfographicPage() {
                   placeholder="Paste clinical instructions, or leave blank — AI fills in the gaps."
                   value={instructions}
                   onChange={(e) => setInstructions(e.target.value)}
-                  disabled={step === "generating" || filling}
+                  disabled={filling}
                   rows={4}
                 />
               </div>
@@ -241,7 +261,6 @@ export default function InfographicPage() {
                       setLanguage(e.target.value);
                       setCustomLang("");
                     }}
-                    disabled={step === "generating"}
                   >
                     {LANGUAGE_OPTIONS.map((l) => (
                       <option key={l} value={l}>
@@ -257,28 +276,43 @@ export default function InfographicPage() {
                       placeholder="Enter language"
                       value={customLang}
                       onChange={(e) => setCustomLang(e.target.value)}
-                      disabled={step === "generating"}
                     />
                   )}
                 </div>
+              </div>
+
+              <div className="ig-quality-row">
+                <span className="ig-quality-row__label">Quality</span>
+                <div className="ig-quality-toggle">
+                  <button
+                    type="button"
+                    className={`ig-quality-toggle__btn${qualityMode === "fast" ? " is-active" : ""}`}
+                    onClick={() => setQualityMode("fast")}
+                  >
+                    Fast
+                  </button>
+                  <button
+                    type="button"
+                    className={`ig-quality-toggle__btn${qualityMode === "standard" ? " is-active" : ""}`}
+                    onClick={() => setQualityMode("standard")}
+                  >
+                    Standard
+                  </button>
+                </div>
+                <span className="ig-quality-row__hint">
+                  {qualityMode === "fast"
+                    ? "~10–15s · good for previewing"
+                    : "~30–40s · higher detail"}
+                </span>
               </div>
 
               <button
                 type="button"
                 className="skinlog__btn"
                 onClick={handleGenerate}
-                disabled={step === "generating" || !diagnosis.trim()}
+                disabled={!diagnosis.trim()}
               >
-                {step === "generating" ? (
-                  <>
-                    <span className="skinlog__spinner" />
-                    {generatingPhase === "designs"
-                      ? "Generating designs…"
-                      : "Generating content…"}
-                  </>
-                ) : (
-                  "Generate infographics"
-                )}
+                Generate infographics
               </button>
             </div>
 
@@ -294,7 +328,7 @@ export default function InfographicPage() {
                 <span className="ig-steps__num">02</span>
                 <span>
                   <strong>Choose a style</strong>
-                  Two AI-generated designs to compare
+                  Two AI-generated designs stream in parallel
                 </span>
               </li>
               <li className="ig-steps__item">
@@ -313,16 +347,29 @@ export default function InfographicPage() {
           </>
         )}
 
-        {step === "preview" && designA && designB && (
+        {step === "generating" && generatingPhase === "content" && (
+          <div className="ig-generating">
+            <span className="skinlog__spinner ig-generating__spinner" />
+            <p className="ig-generating__label">Generating content…</p>
+          </div>
+        )}
+
+        {(step === "preview" || (step === "generating" && generatingPhase === "designs")) && (
           <div className="ig-preview">
-            <h1 className="skinlog__title">Choose a style</h1>
-            <p className="skinlog__lead ig-preview__lead">
-              Click a design to open the editor, or{" "}
-              <button type="button" className="ig-text-btn" onClick={handleRegenerate}>
-                start over
-              </button>
-              .
-            </p>
+            <h1 className="skinlog__title">
+              {generatingPhase === "designs" || (!doneA || !doneB)
+                ? "Generating designs…"
+                : "Choose a style"}
+            </h1>
+            {(doneA && doneB) && (
+              <p className="skinlog__lead ig-preview__lead">
+                Click a design to open the editor, or{" "}
+                <button type="button" className="ig-text-btn" onClick={handleRegenerate}>
+                  start over
+                </button>
+                .
+              </p>
+            )}
 
             {content && (
               <div className="ig-preview__meta">
@@ -332,24 +379,45 @@ export default function InfographicPage() {
             )}
 
             <div className="ig-templates">
-              {([designA, designB] as InfographicDesign[]).map((design) => (
-                <button
-                  key={design.variant}
-                  type="button"
-                  className="ig-template-card"
-                  onClick={() => handleSelectDesign(design)}
-                  aria-label={`Select style ${design.variant}`}
-                >
-                  <div className="ig-template-card__label">Style {design.variant}</div>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={design.image}
-                    alt={`Infographic style ${design.variant}`}
-                    className="ig-template-card__img"
-                  />
-                  <div className="ig-template-card__cta">Edit this style</div>
-                </button>
-              ))}
+              {(["A", "B"] as const).map((variant) => {
+                const preview = variant === "A" ? previewA : previewB;
+                const done = variant === "A" ? doneA : doneB;
+                const design = variant === "A" ? designA : designB;
+                const isReady = done && design;
+
+                return (
+                  <button
+                    key={variant}
+                    type="button"
+                    className={`ig-template-card${isReady ? "" : " is-loading"}`}
+                    onClick={() => isReady && handleSelectDesign(design!)}
+                    disabled={!isReady}
+                    aria-label={`Select style ${variant}`}
+                  >
+                    <div className="ig-template-card__label">
+                      Style {variant}
+                      {!done && <span className="ig-template-card__loading-dot" />}
+                    </div>
+                    <div className="ig-template-card__img-wrap">
+                      {preview ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={preview}
+                          alt={`Infographic style ${variant}`}
+                          className={`ig-template-card__img${done ? "" : " is-partial"}`}
+                        />
+                      ) : (
+                        <div className="ig-template-card__skeleton">
+                          <span className="skinlog__spinner" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="ig-template-card__cta">
+                      {isReady ? "Edit this style" : "Generating…"}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}

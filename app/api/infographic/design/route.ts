@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { generateBothDesignImages } from "@/lib/infographic/openai-images";
-import type { DesignReq, DesignRes } from "@/lib/infographic/types";
+import type { DesignReq, DesignRes, InfographicQualityMode } from "@/lib/infographic/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -8,7 +8,7 @@ export const maxDuration = 60;
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as DesignReq;
+    const body = (await request.json()) as DesignReq & { qualityMode?: InfographicQualityMode };
 
     if (!body.content?.title?.trim()) {
       return NextResponse.json(
@@ -24,9 +24,11 @@ export async function POST(request: Request) {
       );
     }
 
+    const qualityMode = body.qualityMode === "standard" ? "standard" : "fast";
     const { imageA, imageB } = await generateBothDesignImages(
       body.content,
       body.language.trim(),
+      qualityMode,
     );
 
     return NextResponse.json({ imageA, imageB } satisfies DesignRes);

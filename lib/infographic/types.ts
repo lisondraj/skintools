@@ -1,3 +1,5 @@
+export type InfographicQualityMode = "fast" | "standard";
+
 export interface InfographicContent {
   title: string;
   subtitle: string;
