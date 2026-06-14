@@ -62,6 +62,27 @@
   min-width: 0;
 }
 
+.remorph__workspace--editor {
+  display: flex;
+  align-items: stretch;
+  gap: 24px;
+}
+
+.remorph__workspace--editor > .remorph__stage-wrap:not(.remorph__stage-wrap--split) {
+  flex: 0 0 auto;
+  width: auto;
+  height: auto;
+  align-self: stretch;
+  aspect-ratio: 1 / 1;
+  max-width: min(100%, 70vh);
+}
+
+.remorph__workspace--editor > .remorph__panel {
+  flex: 1 1 280px;
+  min-width: 280px;
+  max-width: 420px;
+}
+
 .remorph-entry-area {
   position: relative;
   width: 100%;

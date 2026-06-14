@@ -597,7 +597,7 @@ export default function RemorphPage() {
       </header>
 
       <div
-        className={`remorph__workspace ${splitMode ? "remorph__workspace--split" : ""} ${!image && !splitMode ? "remorph__workspace--entry" : ""}`}
+        className={`remorph__workspace ${splitMode ? "remorph__workspace--split" : ""} ${!image && !splitMode ? "remorph__workspace--entry" : ""} ${image && !splitMode ? "remorph__workspace--editor" : ""}`}
       >
         {!image && !splitMode ? (
           <div
