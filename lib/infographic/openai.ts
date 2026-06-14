@@ -37,37 +37,41 @@ Respond with valid JSON (no markdown fences) matching exactly this shape:
     {
       "id": "s1",
       "heading": "What Is ${diagnosis}? — under 35 chars in ${language}",
-      "body": "3-4 sentences: definition, mechanism, prevalence in Canada, who is typically affected. Be medically accurate but plain-language (grade 7-8 reading level).",
+      "bullets": [
+        "Short bullet — max 12 words in ${language}",
+        "Short bullet — max 12 words",
+        "Short bullet — max 12 words"
+      ],
       "type": "info"
     },
     {
       "id": "s2",
       "heading": "Signs & Symptoms — under 35 chars in ${language}",
-      "body": "3-4 sentences describing the primary and secondary signs. Mention typical progression or variability. Note any features specific to skin of colour if relevant.",
+      "bullets": ["...", "...", "..."],
       "type": "info"
     },
     {
       "id": "s3",
       "heading": "Triggers & Risk Factors — under 35 chars in ${language}",
-      "body": "3-4 sentences on known triggers, environmental factors, and patient-modifiable risks. Include Ontario climate/seasonal factors if applicable.",
+      "bullets": ["...", "...", "..."],
       "type": "note"
     },
     {
       "id": "s4",
       "heading": "Treatment Options — under 35 chars in ${language}",
-      "body": "3-4 sentences covering first-line treatments, prescription options covered by ODB/OHIP, lifestyle modifications, and realistic treatment timelines.",
+      "bullets": ["...", "...", "..."],
       "type": "tip"
     },
     {
       "id": "s5",
       "heading": "When to See Your Doctor — under 35 chars in ${language}",
-      "body": "3-4 sentences on red-flag symptoms warranting urgent care, routine follow-up intervals, and how to access Ontario dermatology services (GP referral to dermatologist).",
+      "bullets": ["...", "...", "..."],
       "type": "warning"
     },
     {
       "id": "s6",
       "heading": "Ontario Resources — under 35 chars in ${language}",
-      "body": "3-4 sentences: Telehealth Ontario 1-800-797-0000 for after-hours advice, ontario.ca/health for information, Ontario Dermatology Alliance patient resources, and local public health unit support.",
+      "bullets": ["...", "...", "..."],
       "type": "note"
     }
   ],
@@ -79,7 +83,8 @@ Rules:
 - ALL text output in ${language}
 - Canadian spelling if language is English
 - Medically accurate, evidence-based content appropriate for Ontario dermatology patients
-- Each section body: exactly 3-4 sentences, substantive and informative
+- Each section: exactly 3 bullets, each max 12 words — one clear idea per bullet, no run-on sentences
+- Never use paragraph prose in bullets — scannable, punchy, patient-friendly
 - Exactly 6 sections in the order shown
 - keyFacts: exactly 4 items, each a standalone punchy fact with a number or statistic where possible
 - Section types must be one of: info, tip, warning, note`;
@@ -126,10 +131,18 @@ Rules:
     (parsed.sections as unknown[]) ?? []
   ).map((s, i) => {
     const sec = s as Record<string, unknown>;
+    const rawBullets = sec.bullets as unknown[] | undefined;
+    const bullets = rawBullets?.length
+      ? rawBullets.map(String).slice(0, 4)
+      : String(sec.body ?? "")
+          .split(/(?<=[.!?])\s+/)
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .slice(0, 4);
     return {
       id: String(sec.id ?? `s${i + 1}`),
       heading: String(sec.heading ?? `Section ${i + 1}`),
-      body: String(sec.body ?? ""),
+      bullets,
       type: SECTION_TYPES.includes(
         sec.type as (typeof SECTION_TYPES)[number],
       )
@@ -141,7 +154,7 @@ Rules:
   return {
     title: String(parsed.title ?? diagnosis),
     subtitle: String(parsed.subtitle ?? "Patient Guide"),
-    keyFacts: ((parsed.keyFacts as unknown[]) ?? []).map(String).slice(0, 3),
+    keyFacts: ((parsed.keyFacts as unknown[]) ?? []).map(String).slice(0, 4),
     sections,
     warning: parsed.warning ? String(parsed.warning) : null,
     footer: String(

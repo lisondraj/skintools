@@ -61,6 +61,7 @@ ${textBlock}
 
 Rules:
 - Every piece of text above must appear in the image
+- Present each section as a heading plus short bullet points — never dense paragraph blocks
 - Ontario, Canada healthcare context throughout
 - No watermarks, placeholder text, or lorem ipsum
 - Professional medical education quality`;

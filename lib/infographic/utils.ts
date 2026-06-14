@@ -17,12 +17,13 @@ export function flattenContent(
     .join("\n");
 
   const sections = content.sections
-    .map(
-      (s, i) => {
-        const tag = TYPE_LABELS[s.type] ?? s.type.toUpperCase();
-        return `  [${tag}] Section ${i + 1}: ${s.heading}\n    ${s.body}`;
-      },
-    )
+    .map((s, i) => {
+      const tag = TYPE_LABELS[s.type] ?? s.type.toUpperCase();
+      const bulletLines = s.bullets
+        .map((b) => `      • ${b}`)
+        .join("\n");
+      return `  [${tag}] Section ${i + 1}: ${s.heading}\n${bulletLines}`;
+    })
     .join("\n\n");
 
   const warning = content.warning
@@ -37,7 +38,7 @@ SUBTITLE: ${content.subtitle}
 KEY FACTS / STATS (render as stat boxes or badges):
 ${facts}
 
-SECTIONS (render each with its type tag):
+SECTIONS (render each heading with bullet list — never as paragraph blocks):
 ${sections}
 ${warning}
 

@@ -62,15 +62,15 @@ async function fetchDesignImageFallback(
 }
 
 /**
- * Stream a single infographic variant; calls onPartial with progressive previews.
- * Falls back to non-streaming if the stream route is unavailable or fails.
+ * Stream a single infographic variant; calls onPartial only if provided (optional).
+ * Partial frames are skipped by default in the UI — they often show garbled text.
  */
 export async function streamDesignImage(
   variant: "A" | "B",
   content: InfographicContent,
   language: string,
   qualityMode: InfographicQualityMode,
-  onPartial: (image: string) => void,
+  onPartial?: (image: string) => void,
 ): Promise<string> {
   let response: Response;
   try {
@@ -120,7 +120,7 @@ export async function streamDesignImage(
             if (!image) continue;
 
             if (event.type === "image_generation.partial_image") {
-              onPartial(image);
+              onPartial?.(image);
             } else {
               finalImage = image;
             }

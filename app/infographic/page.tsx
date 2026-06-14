@@ -145,18 +145,14 @@ export default function InfographicPage() {
       setGeneratingPhase("designs");
       setStep("preview");
 
-      // Stream both variants in parallel
+      // Stream both variants in parallel — show skeleton until final image (no partial previews)
       const [finalA, finalB] = await Promise.all([
-        streamDesignImage("A", generatedContent, lang, qualityMode, (partial) => {
-          setPreviewA(partial);
-        }).then((img) => {
+        streamDesignImage("A", generatedContent, lang, qualityMode).then((img) => {
           setPreviewA(img);
           setDoneA(true);
           return img;
         }),
-        streamDesignImage("B", generatedContent, lang, qualityMode, (partial) => {
-          setPreviewB(partial);
-        }).then((img) => {
+        streamDesignImage("B", generatedContent, lang, qualityMode).then((img) => {
           setPreviewB(img);
           setDoneB(true);
           return img;
@@ -540,12 +536,12 @@ export default function InfographicPage() {
                       {done && <span className="ig-template-card__ready-dot">Ready</span>}
                     </div>
                     <div className="ig-template-card__img-wrap">
-                      {preview ? (
+                      {done && preview ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={preview}
                           alt={`Infographic style ${variant}`}
-                          className={`ig-template-card__img${done ? "" : " is-partial"}`}
+                          className="ig-template-card__img"
                         />
                       ) : (
                         <div className="ig-template-card__skeleton" />

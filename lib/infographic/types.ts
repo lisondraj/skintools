@@ -12,7 +12,8 @@ export interface InfographicContent {
 export interface IGSection {
   id: string;
   heading: string;
-  body: string;
+  /** Short scannable bullet points — not paragraph prose. */
+  bullets: string[];
   type: "info" | "tip" | "warning" | "note";
 }
 
