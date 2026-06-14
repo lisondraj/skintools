@@ -3,7 +3,7 @@ import type { PatientSimConfig } from "./types";
 export function getRealtimeModel(): string {
   return (
     process.env["OPENAI_REALTIME_MODEL"]?.trim() ||
-    "gpt-4o-realtime-preview"
+    "gpt-realtime"
   );
 }
 

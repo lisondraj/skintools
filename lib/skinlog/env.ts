@@ -19,7 +19,7 @@ export function isOpenAiConfigured(): boolean {
 
 export function getRealtimeModel(): string {
   return (
-    process.env["OPENAI_REALTIME_MODEL"]?.trim() || "gpt-4o-realtime-preview"
+    process.env["OPENAI_REALTIME_MODEL"]?.trim() || "gpt-realtime"
   );
 }
 

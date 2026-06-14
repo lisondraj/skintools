@@ -33,18 +33,28 @@ export async function POST(request: Request) {
     const voice = body.sim.voice?.trim() || getDefaultRealtimeVoice();
     const instructions = buildPatientInstructions(body.sim);
 
-    const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
+    const response = await fetch("https://api.openai.com/v1/realtime/client_secrets", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model,
-        voice,
-        instructions,
-        modalities: ["audio", "text"],
-        input_audio_transcription: { model: "whisper-1" },
+        expires_after: {
+          anchor: "created_at",
+          seconds: 600,
+        },
+        session: {
+          type: "realtime",
+          model,
+          instructions,
+          audio: {
+            input: {
+              transcription: { model: "whisper-1" },
+            },
+            output: { voice },
+          },
+        },
       }),
     });
 
@@ -57,10 +67,12 @@ export async function POST(request: Request) {
     }
 
     const data = (await response.json()) as {
-      client_secret?: { value?: string; expires_at?: number };
+      value?: string;
+      expires_at?: number;
+      session?: { model?: string };
     };
 
-    const clientSecret = data.client_secret?.value;
+    const clientSecret = data.value;
     if (!clientSecret) {
       return NextResponse.json(
         { error: "No client secret returned from OpenAI." },
@@ -70,8 +82,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       clientSecret,
-      model,
-      expiresAt: data.client_secret?.expires_at,
+      model: data.session?.model ?? model,
+      expiresAt: data.expires_at,
     } satisfies RealtimeSessionRes);
   } catch (err) {
     const message =

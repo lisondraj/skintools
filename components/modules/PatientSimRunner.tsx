@@ -130,17 +130,14 @@ export function PatientSimRunner({ sim, onEnd, autoStart = false }: Props) {
       await pc.setLocalDescription(offer);
       await waitForIceComplete(pc);
 
-      const sdpRes = await fetch(
-        `https://api.openai.com/v1/realtime?model=${encodeURIComponent(session.model)}`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${session.clientSecret}`,
-            "Content-Type": "application/sdp",
-          },
-          body: pc.localDescription!.sdp, // use full SDP with ICE candidates
+      const sdpRes = await fetch("https://api.openai.com/v1/realtime/calls", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.clientSecret}`,
+          "Content-Type": "application/sdp",
         },
-      );
+        body: pc.localDescription!.sdp,
+      });
 
       if (!sdpRes.ok) {
         const errText = await sdpRes.text();
