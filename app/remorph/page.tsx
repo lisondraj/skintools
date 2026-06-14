@@ -633,9 +633,7 @@ export default function RemorphPage() {
       </div>
 
       {splitMode && (
-        <DraggableEditorPanel onClose={exitSplitMode}>
-          {editorPanel}
-        </DraggableEditorPanel>
+        <DraggableEditorPanel>{editorPanel}</DraggableEditorPanel>
       )}
 
       <HistoryPanel

@@ -4,13 +4,9 @@ import { useCallback, useRef, useState, type ReactNode } from "react";
 
 type DraggableEditorPanelProps = {
   children: ReactNode;
-  onClose?: () => void;
 };
 
-export function DraggableEditorPanel({
-  children,
-  onClose,
-}: DraggableEditorPanelProps) {
+export function DraggableEditorPanel({ children }: DraggableEditorPanelProps) {
   const [position, setPosition] = useState({ x: 24, y: 96 });
   const dragState = useRef<{
     pointerId: number;
@@ -71,15 +67,6 @@ export function DraggableEditorPanel({
         onPointerCancel={handlePointerUp}
       >
         <span className="remorph-float__title">Editor</span>
-        {onClose && (
-          <button
-            type="button"
-            className="remorph-float__close"
-            onClick={onClose}
-          >
-            Close split
-          </button>
-        )}
       </div>
       <div className="remorph-float__body">{children}</div>
     </div>

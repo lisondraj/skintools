@@ -53,12 +53,14 @@
 
 .remorph__workspace--split {
   grid-template-columns: minmax(0, 1fr);
+  overflow-x: auto;
 }
 
 .remorph__stage-wrap--split {
+  width: calc(var(--remorph-stage-size) * 2 + 12px);
+  height: var(--remorph-stage-size);
   aspect-ratio: auto;
-  width: min(calc(var(--remorph-stage-size) * 2 + 12px), 100%);
-  margin: 0 auto;
+  margin: 0;
   overflow: visible;
   background: transparent;
   border-color: transparent;
@@ -68,18 +70,16 @@
   display: flex;
   gap: 12px;
   align-items: flex-start;
-  width: 100%;
+  width: fit-content;
+  height: 100%;
 }
 
 .remorph-split__pane {
   position: relative;
   display: block;
-  flex: 1 1 0;
-  min-width: 0;
-  width: calc((100% - 12px) / 2);
-  max-width: var(--remorph-stage-size);
-  aspect-ratio: 1 / 1;
-  height: auto;
+  flex: 0 0 var(--remorph-stage-size);
+  width: var(--remorph-stage-size);
+  height: var(--remorph-stage-size);
   padding: 0;
   border: 2px solid transparent;
   border-radius: var(--remorph-radius);
@@ -176,27 +176,47 @@
   color: var(--remorph-muted);
 }
 
-.remorph-float__close {
-  padding: 4px 8px;
-  border: 1px solid var(--remorph-border);
-  border-radius: 6px;
-  background: #ffffff;
-  font-family: inherit;
-  font-size: 12px;
-  cursor: pointer;
-}
-
 .remorph-float__body {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  max-height: min(70vh, 640px);
-  overflow: auto;
-  padding: 12px;
+  gap: 8px;
+  padding: 10px;
+  overflow: visible;
 }
 
 .remorph-float__body .remorph__section {
-  padding: 12px;
+  padding: 10px;
+}
+
+.remorph-float__body .remorph__section-title {
+  margin-bottom: 8px;
+}
+
+.remorph-float__body .remorph__hint {
+  display: none;
+}
+
+.remorph-float__body .remorph__label {
+  margin-bottom: 4px;
+  font-size: 12px;
+}
+
+.remorph-float__body .remorph__textarea {
+  min-height: 72px;
+  padding: 10px 12px;
+  resize: none;
+}
+
+.remorph-float__body .remorph__tool-row {
+  margin-bottom: 8px;
+}
+
+.remorph-float__body .remorph__btn {
+  padding: 10px 12px;
+}
+
+.remorph-float__body .remorph__error {
+  padding: 10px 12px;
 }
 
 .remorph__stage-wrap {
