@@ -172,23 +172,27 @@
   margin: 0;
 }
 
-.remorph__selection-status {
-  margin: 10px 0 0;
-  font-size: 13px;
-  line-height: 1.45;
-  color: var(--remorph-muted);
+.remorph__tool-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
-.remorph__selection-status.is-active {
-  color: #8f2018;
+.remorph__tool-btn {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid var(--remorph-border);
+  border-radius: 8px;
+  background: #ffffff;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
 }
 
-.remorph__category-label {
-  margin: 0 0 8px;
-  font-size: 13px;
-  line-height: 1.45;
-  color: var(--remorph-text);
-  font-weight: 500;
+.remorph__tool-btn.is-active {
+  background: var(--remorph-accent);
+  color: #ffffff;
+  border-color: var(--remorph-accent);
 }
 
 .remorph__error {
@@ -238,30 +242,11 @@
   pointer-events: none;
 }
 
-.remorph-stage__select {
+.remorph-stage__mask {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   touch-action: none;
   cursor: crosshair;
-}
-
-.remorph-stage__overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.72);
-  padding: 24px;
-  z-index: 2;
-}
-
-.remorph-stage__overlay-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  max-width: 320px;
-  width: 100%;
 }

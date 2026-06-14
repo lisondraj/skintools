@@ -1,45 +1,26 @@
 "use client";
 
 import { forwardRef } from "react";
-import {
-  FeatureSelectCanvas,
-  type FeatureSelectHandle,
-} from "@/components/remorph/FeatureSelectCanvas";
-import type { RemorphFeature } from "@/lib/remorph/types";
+import { MaskCanvas, type MaskCanvasHandle } from "@/components/remorph/MaskCanvas";
 
 type ImageStageProps = {
   image: string;
-  features: RemorphFeature[];
+  brushSize: number;
+  brushMode: "paint" | "erase";
   disabled?: boolean;
-  onSelectionChange?: (hasSelection: boolean) => void;
-  onHoverCategoryChange?: (category: string | null, label: string | null) => void;
-  onMasksReady?: (ready: boolean) => void;
 };
 
-export const ImageStage = forwardRef<FeatureSelectHandle, ImageStageProps>(
-  function ImageStage(
-    {
-      image,
-      features,
-      disabled = false,
-      onSelectionChange,
-      onHoverCategoryChange,
-      onMasksReady,
-    },
-    ref,
-  ) {
+export const ImageStage = forwardRef<MaskCanvasHandle, ImageStageProps>(
+  function ImageStage({ image, brushSize, brushMode, disabled = false }, ref) {
     return (
       <div className="remorph-stage">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={image} alt="Current image" className="remorph-stage__image" />
-        <FeatureSelectCanvas
+        <MaskCanvas
           ref={ref}
-          image={image}
-          features={features}
+          brushSize={brushSize}
+          brushMode={brushMode}
           disabled={disabled}
-          onSelectionChange={onSelectionChange}
-          onHoverCategoryChange={onHoverCategoryChange}
-          onMasksReady={onMasksReady}
         />
       </div>
     );

@@ -117,3 +117,34 @@ export function readFileAsDataUrl(file: File): Promise<string> {
     reader.readAsDataURL(file);
   });
 }
+
+/** OpenAI mask: transparent = edit, opaque = preserve. */
+export function buildEditMaskFromBrush(
+  brushCanvas: HTMLCanvasElement,
+  size = REMORPH_STAGE_SIZE,
+): { mask: string; hasPaint: boolean } {
+  const brushCtx = brushCanvas.getContext("2d");
+  if (!brushCtx) throw new Error("Could not read brush layer.");
+
+  const maskCanvas = document.createElement("canvas");
+  maskCanvas.width = size;
+  maskCanvas.height = size;
+  const maskCtx = maskCanvas.getContext("2d");
+  if (!maskCtx) throw new Error("Could not build mask.");
+
+  const brushData = brushCtx.getImageData(0, 0, size, size);
+  const maskData = maskCtx.createImageData(size, size);
+
+  let hasPaint = false;
+  for (let i = 0; i < brushData.data.length; i += 4) {
+    const painted = brushData.data[i + 3] > 8;
+    if (painted) hasPaint = true;
+    maskData.data[i] = 0;
+    maskData.data[i + 1] = 0;
+    maskData.data[i + 2] = 0;
+    maskData.data[i + 3] = painted ? 0 : 255;
+  }
+
+  maskCtx.putImageData(maskData, 0, 0);
+  return { mask: maskCanvas.toDataURL("image/png"), hasPaint };
+}

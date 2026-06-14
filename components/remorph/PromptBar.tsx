@@ -6,11 +6,12 @@ type PromptBarProps = {
   onPromptChange: (value: string) => void;
   onSubmit: () => void;
   busy?: boolean;
-  onClearSelection: () => void;
+  brushSize: number;
+  onBrushSizeChange: (value: number) => void;
+  brushMode: "paint" | "erase";
+  onBrushModeChange: (mode: "paint" | "erase") => void;
+  onClearMask: () => void;
   hasImage: boolean;
-  hasSelection: boolean;
-  hoverLabel: string | null;
-  segmentReady: boolean;
 };
 
 export function PromptBar({
@@ -19,11 +20,12 @@ export function PromptBar({
   onPromptChange,
   onSubmit,
   busy = false,
-  onClearSelection,
+  brushSize,
+  onBrushSizeChange,
+  brushMode,
+  onBrushModeChange,
+  onClearMask,
   hasImage,
-  hasSelection,
-  hoverLabel,
-  segmentReady,
 }: PromptBarProps) {
   const isGenerate = mode === "generate";
 
@@ -31,33 +33,50 @@ export function PromptBar({
     <>
       {hasImage && (
         <section className="remorph__section">
-          <h2 className="remorph__section-title">Feature select</h2>
+          <h2 className="remorph__section-title">Brush mask</h2>
           <p className="remorph__hint">
-            Hover a feature to highlight all regions of the same type; click to
-            select. Click another type to add. Unselected areas stay identical.
+            Paint the region you want to change. Unpainted areas stay identical.
+            Leave the mask empty to edit the whole image.
           </p>
-          {hoverLabel ? (
-            <p className="remorph__category-label">Hovering: {hoverLabel}</p>
-          ) : null}
-          <p
-            className={`remorph__selection-status${
-              hasSelection ? " is-active" : ""
-            }`}
-          >
-            {!segmentReady
-              ? "Analyzing features…"
-              : hasSelection
-                ? "Region selected — edit will apply only to the highlight."
-                : "No region selected — edit will apply to the whole image."}
-          </p>
+          <div className="remorph__tool-row">
+            <button
+              type="button"
+              className={`remorph__tool-btn ${brushMode === "paint" ? "is-active" : ""}`}
+              onClick={() => onBrushModeChange("paint")}
+              disabled={busy}
+            >
+              Paint
+            </button>
+            <button
+              type="button"
+              className={`remorph__tool-btn ${brushMode === "erase" ? "is-active" : ""}`}
+              onClick={() => onBrushModeChange("erase")}
+              disabled={busy}
+            >
+              Erase
+            </button>
+          </div>
+          <label className="remorph__label" htmlFor="brush-size">
+            Brush size ({brushSize}px)
+          </label>
+          <input
+            id="brush-size"
+            className="remorph__range"
+            type="range"
+            min={8}
+            max={120}
+            value={brushSize}
+            onChange={(event) => onBrushSizeChange(Number(event.target.value))}
+            disabled={busy}
+          />
           <div className="remorph__btn-row" style={{ marginTop: 12 }}>
             <button
               type="button"
               className="remorph__btn remorph__btn--secondary"
-              onClick={onClearSelection}
-              disabled={busy || !hasSelection}
+              onClick={onClearMask}
+              disabled={busy}
             >
-              Clear selection
+              Clear mask
             </button>
           </div>
         </section>
@@ -70,7 +89,7 @@ export function PromptBar({
         <p className="remorph__hint">
           {isGenerate
             ? "Describe the up-close skin lesion photo to generate."
-            : "Describe how the selected feature should change. Example: make the pimple larger, keep the skin unchanged."}
+            : "Describe how the painted region should change. Example: darker skin tone, keep lesion color unchanged."}
         </p>
         <label className="remorph__label" htmlFor="remorph-prompt">
           Prompt
@@ -83,7 +102,7 @@ export function PromptBar({
           placeholder={
             isGenerate
               ? "Small brown macule on fair skin, clinical close-up..."
-              : "Make the pimple slightly larger and more inflamed..."
+              : "Show on a darker skin phenotype, preserve the lesion..."
           }
           disabled={busy}
         />
@@ -92,7 +111,7 @@ export function PromptBar({
           className="remorph__btn"
           style={{ marginTop: 12 }}
           onClick={onSubmit}
-          disabled={busy || !prompt.trim() || (hasImage && !segmentReady)}
+          disabled={busy || !prompt.trim()}
         >
           {busy ? "Working..." : isGenerate ? "Generate image" : "Apply edit"}
         </button>
