@@ -1,6 +1,6 @@
 import { getOpenAiKey } from "@/lib/skinlog/env";
 
-const DEFAULT_IMAGE_MODEL = "gpt-image-1";
+const DEFAULT_IMAGE_MODEL = "gpt-image-2";
 
 export function getImageModel(): string {
   return process.env["OPENAI_IMAGE_MODEL"]?.trim() || DEFAULT_IMAGE_MODEL;
