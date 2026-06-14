@@ -118,7 +118,7 @@ function AlbumStackLayer({
         {
           "--stack-depth": stackDepth,
           zIndex: index + 1,
-        } as React.CSSProperties
+        } as CSSProperties
       }
     >
       <button
