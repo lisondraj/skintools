@@ -56,6 +56,157 @@
   overflow-x: auto;
 }
 
+.remorph__workspace--entry {
+  overflow-x: auto;
+}
+
+.remorph__stage-wrap--entry {
+  aspect-ratio: auto;
+  width: calc(var(--remorph-stage-size) * 3 + 24px);
+  height: var(--remorph-stage-size);
+  margin: 0;
+  overflow: visible;
+}
+
+.remorph-entry {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  width: fit-content;
+  height: 100%;
+}
+
+.remorph-entry__box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex: 0 0 var(--remorph-stage-size);
+  width: var(--remorph-stage-size);
+  height: var(--remorph-stage-size);
+  padding: 20px;
+  border: 1px dashed var(--remorph-border);
+  border-radius: var(--remorph-radius);
+  background: #ffffff;
+  color: var(--remorph-text);
+  font-family: inherit;
+  text-align: center;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.remorph-entry__box:hover:not(:disabled) {
+  border-color: rgba(0, 0, 0, 0.25);
+  background: #fafafa;
+}
+
+.remorph-entry__box:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.remorph-entry__box--drop {
+  cursor: copy;
+}
+
+.remorph-entry__box--drop.is-active {
+  border-color: #7ec8f0;
+  background: rgba(126, 200, 240, 0.08);
+}
+
+.remorph-entry__icon {
+  font-size: 28px;
+  line-height: 1;
+  color: var(--remorph-muted);
+}
+
+.remorph-entry__label {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--remorph-text);
+}
+
+.remorph__panel-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.remorph-source-menu {
+  position: relative;
+}
+
+.remorph-source-menu__trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--remorph-border);
+  border-radius: 10px;
+  background: #ffffff;
+  color: var(--remorph-text);
+  font-family: inherit;
+  font-size: 26px;
+  font-weight: 300;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.remorph-source-menu__trigger:hover:not(:disabled) {
+  border-color: rgba(0, 0, 0, 0.25);
+  background: #fafafa;
+}
+
+.remorph-source-menu__trigger:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.remorph-source-menu__dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  min-width: 240px;
+  padding: 6px;
+  border: 1px solid var(--remorph-border);
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.1);
+}
+
+.remorph-source-menu__item {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--remorph-text);
+  font-family: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.remorph-source-menu__item:hover {
+  background: #f4f2ef;
+}
+
+.remorph__btn--compact {
+  width: auto;
+  flex: 0 0 auto;
+  padding: 10px 14px;
+}
+
+.remorph-float__body .remorph__panel-toolbar {
+  padding: 0 2px;
+}
+
 .remorph__stage-wrap--split {
   width: calc(var(--remorph-stage-size) * 2 + 12px);
   height: var(--remorph-stage-size);

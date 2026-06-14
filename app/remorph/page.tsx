@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DraggableEditorPanel } from "@/components/remorph/DraggableEditorPanel";
+import { EntryBoxes } from "@/components/remorph/EntryBoxes";
 import { HistoryPanel } from "@/components/remorph/HistoryPanel";
 import { ImageStage } from "@/components/remorph/ImageStage";
 import { PromptBar } from "@/components/remorph/PromptBar";
 import { SplitStage } from "@/components/remorph/SplitStage";
+import { SourceMenu } from "@/components/remorph/SourceMenu";
 import type { MaskCanvasHandle } from "@/components/remorph/MaskCanvas";
 import { editImage, generateImage } from "@/lib/remorph/client";
 import { normalizeToStage, readFileAsDataUrl } from "@/lib/remorph/image-utils";
@@ -91,6 +93,7 @@ export default function RemorphPage() {
   );
   const [editTarget, setEditTarget] = useState<"left" | "right">("left");
   const [dropHover, setDropHover] = useState(false);
+  const [splitDropHint, setSplitDropHint] = useState(false);
 
   const maskRef = useRef<MaskCanvasHandle>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -133,6 +136,7 @@ export default function RemorphPage() {
       setDropHover(false);
       clearMask();
       activeAlbumIdRef.current = left.albumId || null;
+      setSplitDropHint(false);
     },
     [clearMask],
   );
@@ -177,6 +181,7 @@ export default function RemorphPage() {
         if (splitMode) exitSplitMode();
         clearMask();
         activeAlbumIdRef.current = null;
+        setSplitDropHint(false);
         startAlbum(makeStep(normalized, "upload"), "Uploaded skin photo");
       } catch (uploadError) {
         setError(
@@ -205,6 +210,7 @@ export default function RemorphPage() {
       if (splitMode) exitSplitMode();
       clearMask();
       activeAlbumIdRef.current = null;
+      setSplitDropHint(false);
       startAlbum(makeStep(normalized, "generate", trimmed), trimmed);
     } catch (generateError) {
       setError(
@@ -317,6 +323,18 @@ export default function RemorphPage() {
     setError(null);
   }, [clearMask, compareLeft, compareRight, editTarget, previousImage, splitMode]);
 
+  const handlePromptFocus = useCallback(() => {
+    document.getElementById("remorph-prompt")?.focus();
+  }, []);
+
+  const handleSplitFromHistoryMenu = useCallback(() => {
+    setSplitDropHint(true);
+    document.querySelector(".remorph-history")?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+    });
+  }, []);
+
   const handleSelectHistoryImage = useCallback(
     (selected: string, albumId: string) => {
       if (splitMode) exitSplitMode();
@@ -325,8 +343,16 @@ export default function RemorphPage() {
       activeAlbumIdRef.current = albumId;
       clearMask();
       setError(null);
+      setSplitDropHint(false);
     },
     [clearMask, exitSplitMode, splitMode],
+  );
+
+  const handleHistoryEntryDrop = useCallback(
+    (payload: RemorphDragStep) => {
+      handleSelectHistoryImage(payload.image, payload.albumId);
+    },
+    [handleSelectHistoryImage],
   );
 
   const handleSelectEditTarget = useCallback(
@@ -359,6 +385,7 @@ export default function RemorphPage() {
     (event: React.DragEvent) => {
       event.preventDefault();
       setDropHover(false);
+      setSplitDropHint(false);
 
       const raw = event.dataTransfer.getData(REMORPH_DRAG_MIME);
       if (!raw) return;
@@ -519,40 +546,37 @@ export default function RemorphPage() {
         </div>
       )}
 
-      <section className="remorph__section">
-        <h2 className="remorph__section-title">Source</h2>
-        <div className="remorph__btn-row">
+      <div className="remorph__panel-toolbar">
+        <SourceMenu
+          onUpload={() => fileInputRef.current?.click()}
+          onPrompt={handlePromptFocus}
+          onSplitFromHistory={handleSplitFromHistoryMenu}
+          disabled={busy}
+          hasImage={hasEditImage}
+        />
+        {previousImage && (
           <button
             type="button"
-            className="remorph__btn remorph__btn--secondary"
-            onClick={() => fileInputRef.current?.click()}
+            className="remorph__btn remorph__btn--secondary remorph__btn--compact"
+            onClick={handleUndo}
             disabled={busy}
           >
-            Upload photo
+            Undo
           </button>
-          {previousImage && (
-            <button
-              type="button"
-              className="remorph__btn remorph__btn--secondary"
-              onClick={handleUndo}
-              disabled={busy}
-            >
-              Undo
-            </button>
-          )}
-        </div>
-        <input
-          ref={fileInputRef}
-          className="remorph__file-input"
-          type="file"
-          accept="image/*"
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            if (file) void handleUpload(file);
-            event.target.value = "";
-          }}
-        />
-      </section>
+        )}
+      </div>
+
+      <input
+        ref={fileInputRef}
+        className="remorph__file-input"
+        type="file"
+        accept="image/*"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) void handleUpload(file);
+          event.target.value = "";
+        }}
+      />
 
       <PromptBar
         mode={hasEditImage ? "edit" : "generate"}
@@ -580,10 +604,10 @@ export default function RemorphPage() {
       </header>
 
       <div
-        className={`remorph__workspace ${splitMode ? "remorph__workspace--split" : ""}`}
+        className={`remorph__workspace ${splitMode ? "remorph__workspace--split" : ""} ${!image && !splitMode ? "remorph__workspace--entry" : ""}`}
       >
         <div
-          className={`remorph__stage-wrap ${splitMode ? "remorph__stage-wrap--split" : ""} ${dropHover ? "is-drop-target" : ""}`}
+          className={`remorph__stage-wrap ${splitMode ? "remorph__stage-wrap--split" : ""} ${!image && !splitMode ? "remorph__stage-wrap--entry" : ""} ${dropHover || splitDropHint ? "is-drop-target" : ""}`}
           onDragOver={handleStageDragOver}
           onDragLeave={handleStageDragLeave}
           onDrop={handleStageDrop}
@@ -608,23 +632,28 @@ export default function RemorphPage() {
               disabled={busy}
             />
           ) : (
-            <div className="remorph__stage-empty">
-              <p>Upload a close-up skin photo or generate one with AI.</p>
-              <p className="remorph__stage-empty-hint">
-                Drag a history thumbnail here to compare side by side.
-              </p>
-              {busy && (
-                <div className="remorph__loading">
-                  <span className="remorph__spinner" aria-hidden />
-                  Working...
-                </div>
-              )}
+            <EntryBoxes
+              onUploadClick={() => fileInputRef.current?.click()}
+              onPromptClick={handlePromptFocus}
+              onHistoryDrop={handleHistoryEntryDrop}
+              busy={busy}
+              historyDropActive={splitDropHint || dropHover}
+            />
+          )}
+
+          {busy && !image && !splitMode && (
+            <div className="remorph__drop-overlay" aria-hidden>
+              Working...
             </div>
           )}
 
-          {dropHover && (
+          {(dropHover || splitDropHint) && (
             <div className="remorph__drop-overlay" aria-hidden>
-              Split screen
+              {dropHover
+                ? image
+                  ? "Split screen"
+                  : "Drop image"
+                : "Drag from history below"}
             </div>
           )}
         </div>
