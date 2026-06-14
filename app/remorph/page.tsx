@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { DraggableEditorPanel } from "@/components/remorph/DraggableEditorPanel";
 import { EntryBoxes } from "@/components/remorph/EntryBoxes";
 import { HistoryPanel } from "@/components/remorph/HistoryPanel";
@@ -98,7 +98,7 @@ export default function RemorphPage() {
   const [dropHover, setDropHover] = useState(false);
   const [splitDropHint, setSplitDropHint] = useState(false);
   const [promptEntryOpen, setPromptEntryOpen] = useState(false);
-  const [splitPaneSize, setSplitPaneSize] = useState<number | null>(null);
+  const [floatInitialX, setFloatInitialX] = useState(24);
 
   const maskRef = useRef<MaskCanvasHandle>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -128,7 +128,7 @@ export default function RemorphPage() {
     setSplitMode(false);
     setCompareLeft(null);
     setCompareRight(null);
-    setSplitPaneSize(null);
+    setFloatInitialX(24);
     setDropHover(false);
     clearMask();
 
@@ -142,7 +142,14 @@ export default function RemorphPage() {
     (left: RemorphComparePane, right: RemorphComparePane) => {
       const rect = stageWrapRef.current?.getBoundingClientRect();
       if (rect && rect.width > 0) {
-        setSplitPaneSize(Math.round(rect.width));
+        // Position float to the right of where both panes will be
+        const panesWidth = rect.width * 2 + 12;
+        const containerLeft = rect.left;
+        const floatX = Math.min(
+          containerLeft + panesWidth + 16,
+          window.innerWidth - 356,
+        );
+        setFloatInitialX(Math.max(16, floatX));
       }
 
       setSplitMode(true);
@@ -634,11 +641,6 @@ export default function RemorphPage() {
           <div
             ref={stageWrapRef}
             className={`remorph__stage-wrap ${splitMode ? "remorph__stage-wrap--split" : ""} ${dropHover || splitDropHint ? "is-drop-target" : ""}`}
-            style={
-              splitMode && splitPaneSize
-                ? ({ "--split-pane-size": `${splitPaneSize}px` } as CSSProperties)
-                : undefined
-            }
             onDragOver={handleStageDragOver}
             onDragLeave={handleStageDragLeave}
             onDrop={handleStageDrop}
@@ -691,7 +693,7 @@ export default function RemorphPage() {
       />
 
       {splitMode && (
-        <DraggableEditorPanel>{editorPanel}</DraggableEditorPanel>
+        <DraggableEditorPanel initialX={floatInitialX}>{editorPanel}</DraggableEditorPanel>
       )}
 
       <HistoryPanel

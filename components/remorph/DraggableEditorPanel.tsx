@@ -4,10 +4,11 @@ import { useCallback, useRef, useState, type ReactNode } from "react";
 
 type DraggableEditorPanelProps = {
   children: ReactNode;
+  initialX?: number;
 };
 
-export function DraggableEditorPanel({ children }: DraggableEditorPanelProps) {
-  const [position, setPosition] = useState({ x: 24, y: 96 });
+export function DraggableEditorPanel({ children, initialX = 24 }: DraggableEditorPanelProps) {
+  const [position, setPosition] = useState({ x: initialX, y: 96 });
   const dragState = useRef<{
     pointerId: number;
     startX: number;

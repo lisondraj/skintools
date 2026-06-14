@@ -16,25 +16,17 @@ export function PromptBar({
   return (
     <section className="remorph__section remorph__section--edit">
       <h2 className="remorph__section-title">Edit</h2>
-      <p className="remorph__hint">
-        Describe how the image should change. Example: darker skin tone, keep
-        lesion color unchanged.
-      </p>
-      <label className="remorph__label" htmlFor="remorph-prompt">
-        Prompt
-      </label>
       <textarea
         id="remorph-prompt"
         className="remorph__textarea remorph__textarea--grow"
         value={prompt}
         onChange={(event) => onPromptChange(event.target.value)}
-        placeholder="Show on a darker skin phenotype, preserve the lesion..."
+        placeholder="Describe the change, e.g. darker skin tone, keep lesion unchanged…"
         disabled={busy}
       />
       <button
         type="button"
-        className="remorph__btn"
-        style={{ marginTop: 12 }}
+        className="remorph__btn remorph__btn--edit"
         onClick={onSubmit}
         disabled={busy || !prompt.trim()}
       >

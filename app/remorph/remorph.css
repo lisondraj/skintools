@@ -20,6 +20,10 @@
   --remorph-stage-size: calc(
     (min(100vw, var(--remorph-max)) - 56px - 280px - 24px) * 1.4 / 2.3
   );
+  --remorph-split-pane-size: min(
+    var(--remorph-stage-size),
+    calc((min(100vw, var(--remorph-max)) - 56px - 12px) / 2)
+  );
   --remorph-history-size: 212px;
   --remorph-history-stack-offset: 18px;
 }
@@ -287,12 +291,22 @@
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
+  gap: 10px;
   min-height: 0;
+}
+
+.remorph__section--edit .remorph__section-title {
+  margin-bottom: 0;
 }
 
 .remorph__section--edit .remorph__textarea--grow {
   flex: 1 1 auto;
-  min-height: 120px;
+  min-height: 100px;
+}
+
+.remorph__btn--edit {
+  margin-top: 0;
+  flex-shrink: 0;
 }
 
 .remorph__undo-btn {
@@ -415,7 +429,7 @@
 }
 
 .remorph__stage-wrap--split {
-  --_pane: var(--split-pane-size, var(--remorph-stage-size));
+  --_pane: var(--remorph-split-pane-size);
   width: calc(var(--_pane) * 2 + 12px);
   height: var(--_pane);
   min-width: 0;
@@ -446,9 +460,9 @@
 .remorph-split__pane {
   position: relative;
   display: block;
-  flex: 0 0 var(--split-pane-size, var(--remorph-stage-size));
-  width: var(--split-pane-size, var(--remorph-stage-size));
-  height: var(--split-pane-size, var(--remorph-stage-size));
+  flex: 0 0 var(--remorph-split-pane-size);
+  width: var(--remorph-split-pane-size);
+  height: var(--remorph-split-pane-size);
   padding: 0;
   border: 1px solid var(--remorph-border);
   border-radius: var(--remorph-radius);
@@ -476,11 +490,12 @@
   top: 0;
   left: 0;
   z-index: 50;
-  width: min(360px, calc(100vw - 32px));
+  width: min(340px, calc(100vw - 32px));
   border: 1px solid var(--remorph-border);
   border-radius: var(--remorph-radius);
   background: #ffffff;
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.14);
+  overflow: hidden;
   animation: remorph-float-in 0.24s cubic-bezier(0.34, 1.4, 0.64, 1) both;
   transform-origin: top left;
 }
@@ -925,7 +940,7 @@
 .remorph-history__list {
   display: flex;
   flex-wrap: wrap;
-  gap: 32px 28px;
+  gap: 16px 18px;
 }
 
 .remorph-album {
