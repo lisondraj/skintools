@@ -96,19 +96,31 @@ export default function InfographicPage() {
         }),
       });
 
-      const data = (await res.json()) as {
-        content?: InfographicContent;
-        error?: string;
-      };
-
-      if (!res.ok || data.error) {
-        setError(data.error ?? "Generation failed.");
+      let data: { content?: InfographicContent; error?: string };
+      try {
+        data = (await res.json()) as typeof data;
+      } catch {
+        setError(`Server error (${res.status}). Please try again.`);
         setStep("input");
         setGeneratingPhase(null);
         return;
       }
 
-      const generatedContent = data.content!;
+      if (!res.ok || data.error) {
+        setError(data.error ?? "Content generation failed.");
+        setStep("input");
+        setGeneratingPhase(null);
+        return;
+      }
+
+      if (!data.content) {
+        setError("No content returned. Please try again.");
+        setStep("input");
+        setGeneratingPhase(null);
+        return;
+      }
+
+      const generatedContent = data.content;
       setContent(generatedContent);
       setGeneratingPhase("designs");
       setStep("preview");
@@ -135,7 +147,9 @@ export default function InfographicPage() {
       setDesignB({ variant: "B", image: finalB });
       setGeneratingPhase(null);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Network error. Please try again.";
+      console.error("[infographic] generate error:", err);
+      const msg =
+        err instanceof Error ? err.message : "Network error. Please try again.";
       setError(msg);
       setStep("input");
       setGeneratingPhase(null);
