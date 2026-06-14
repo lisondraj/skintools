@@ -22,9 +22,6 @@ type HistoryPanelProps = {
   onDeleteAlbum: (albumId: string) => void;
 };
 
-const STACK_OFFSET = 14;
-const THUMB_SIZE = 132;
-
 function stepLabel(index: number): string {
   return index === 0 ? "Original" : `Edit ${index}`;
 }
@@ -42,13 +39,10 @@ function AlbumStack({
   onDeleteStep: (albumId: string, stepId: string) => void;
   onDeleteAlbum: (albumId: string) => void;
 }) {
-  const stackHeight =
-    THUMB_SIZE + Math.max(0, album.steps.length - 1) * STACK_OFFSET;
-
   return (
     <article
       className="remorph-album"
-      style={{ "--album-stack-height": `${stackHeight}px` } as CSSProperties}
+      style={{ "--album-step-count": album.steps.length } as CSSProperties}
     >
       <div className="remorph-album__stack">
         <button
