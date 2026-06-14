@@ -1,12 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import type {
   InfographicContent,
   InfographicDesign,
   InfographicQualityMode,
 } from "@/lib/infographic/types";
+import {
+  type InfographicHistoryEntry,
+  hydrateHistory,
+  getHistory,
+  saveHistoryEntry,
+  deleteHistoryEntry,
+  formatHistoryTime,
+} from "@/lib/infographic/storage";
 import { streamDesignImage } from "@/lib/infographic/client";
 import { InfographicEditor } from "@/components/infographic/InfographicEditor";
 import "./infographic.css";
@@ -41,8 +49,20 @@ export default function InfographicPage() {
     "content" | "designs" | null
   >(null);
 
+  // History state
+  const [history, setHistory] = useState<InfographicHistoryEntry[]>([]);
+
   const diagnosisRef = useRef<HTMLInputElement>(null);
   const lang = customLang.trim() || language;
+
+  // Hydrate history from IndexedDB on mount
+  useEffect(() => {
+    hydrateHistory().then((entries) => setHistory(entries)).catch(() => {});
+  }, []);
+
+  const refreshHistory = useCallback(() => {
+    setHistory([...getHistory()]);
+  }, []);
 
   async function handleFillInstructions() {
     if (!diagnosis.trim()) {
@@ -157,8 +177,32 @@ export default function InfographicPage() {
   }
 
   function handleSelectDesign(design: InfographicDesign) {
+    // Save to history when entering the editor
+    const entry: InfographicHistoryEntry = {
+      id: crypto.randomUUID(),
+      diagnosis: diagnosis.trim() || "Untitled",
+      language: lang,
+      variant: design.variant,
+      image: design.image,
+      createdAt: Date.now(),
+    };
+    saveHistoryEntry(entry);
+    refreshHistory();
+
     setActiveDesign(design);
     setStep("editor");
+  }
+
+  function handleOpenHistoryEntry(entry: InfographicHistoryEntry) {
+    setActiveDesign({ variant: entry.variant, image: entry.image });
+    setDiagnosis(entry.diagnosis);
+    setStep("editor");
+  }
+
+  function handleDeleteHistoryEntry(id: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    deleteHistoryEntry(id);
+    refreshHistory();
   }
 
   function handleBack() {
@@ -184,7 +228,7 @@ export default function InfographicPage() {
         <InfographicEditor
           design={activeDesign}
           qualityMode={qualityMode}
-          onBack={handleBack}
+          onBack={step === "editor" && designA && designB ? handleBack : () => setStep("input")}
         />
       </div>
     );
@@ -354,6 +398,51 @@ export default function InfographicPage() {
               </li>
             </ol>
             </div>
+
+            {history.length > 0 && (
+              <section className="ig-history" aria-label="History">
+                <h2 className="ig-history__heading">History</h2>
+                <div className="ig-history__scroll">
+                  {history.map((entry) => (
+                    <button
+                      key={entry.id}
+                      type="button"
+                      className="ig-history-card"
+                      onClick={() => handleOpenHistoryEntry(entry)}
+                      title={`${entry.diagnosis} — ${entry.language}`}
+                    >
+                      <div className="ig-history-card__img-wrap">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={entry.image}
+                          alt={entry.diagnosis}
+                          className="ig-history-card__img"
+                        />
+                        <span className="ig-history-card__variant">
+                          {entry.variant}
+                        </span>
+                      </div>
+                      <div className="ig-history-card__body">
+                        <span className="ig-history-card__title">
+                          {entry.diagnosis}
+                        </span>
+                        <span className="ig-history-card__meta">
+                          {entry.language} · {formatHistoryTime(entry.createdAt)}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        className="ig-history-card__delete"
+                        aria-label={`Delete ${entry.diagnosis}`}
+                        onClick={(e) => handleDeleteHistoryEntry(entry.id, e)}
+                      >
+                        ×
+                      </button>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
 
             <p className="skinlog__disclaimer">
               For patient education only. Not a substitute for medical advice.
