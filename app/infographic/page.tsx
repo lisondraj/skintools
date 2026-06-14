@@ -363,34 +363,71 @@ export default function InfographicPage() {
 
         {step === "generating" && generatingPhase === "content" && (
           <div className="ig-generating">
-            <span className="skinlog__spinner ig-generating__spinner" />
-            <p className="ig-generating__label">Generating content…</p>
+            <div className="ig-generating__steps">
+              <div className="ig-generating__step is-active">
+                <span className="ig-generating__step-dot">
+                  <span className="skinlog__spinner ig-generating__step-spinner" />
+                </span>
+                <span className="ig-generating__step-text">Writing patient content</span>
+              </div>
+              <div className="ig-generating__step">
+                <span className="ig-generating__step-dot ig-generating__step-dot--idle" />
+                <span className="ig-generating__step-text ig-generating__step-text--idle">Generating two designs</span>
+              </div>
+            </div>
+            {diagnosis && (
+              <p className="ig-generating__context">{diagnosis}</p>
+            )}
           </div>
         )}
 
-        {(step === "preview" || (step === "generating" && generatingPhase === "designs")) && (
+        {step === "preview" && (
           <div className="ig-preview">
-            <h1 className="skinlog__title">
-              {generatingPhase === "designs" || (!doneA || !doneB)
-                ? "Generating designs…"
-                : "Choose a style"}
-            </h1>
-            {(doneA && doneB) && (
-              <p className="skinlog__lead ig-preview__lead">
-                Click a design to open the editor, or{" "}
-                <button type="button" className="ig-text-btn" onClick={handleRegenerate}>
-                  start over
-                </button>
-                .
-              </p>
-            )}
-
-            {content && (
-              <div className="ig-preview__meta">
-                <span className="ig-preview__tag">{content.title}</span>
-                <span className="ig-preview__lang">{lang}</span>
-              </div>
-            )}
+            <div className="ig-preview__header">
+              {!(doneA && doneB) ? (
+                <>
+                  <div className="ig-generating__steps">
+                    <div className="ig-generating__step ig-generating__step--done">
+                      <span className="ig-generating__step-dot ig-generating__step-dot--done">✓</span>
+                      <span className="ig-generating__step-text">Patient content written</span>
+                    </div>
+                    <div className="ig-generating__step is-active">
+                      <span className="ig-generating__step-dot">
+                        <span className="skinlog__spinner ig-generating__step-spinner" />
+                      </span>
+                      <span className="ig-generating__step-text">
+                        Generating designs
+                        {(doneA || doneB) && (
+                          <span className="ig-generating__step-count">
+                            {" "}· {doneA && doneB ? 2 : 1} of 2 ready
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                  {content && (
+                    <p className="ig-generating__context">{content.title}</p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <h1 className="skinlog__title">Choose a style</h1>
+                  <p className="skinlog__lead ig-preview__lead">
+                    Click a design to open the editor, or{" "}
+                    <button type="button" className="ig-text-btn" onClick={handleRegenerate}>
+                      start over
+                    </button>
+                    .
+                  </p>
+                  {content && (
+                    <div className="ig-preview__meta">
+                      <span className="ig-preview__tag">{content.title}</span>
+                      <span className="ig-preview__lang">{lang}</span>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
 
             <div className="ig-templates">
               {(["A", "B"] as const).map((variant) => {
@@ -411,6 +448,7 @@ export default function InfographicPage() {
                     <div className="ig-template-card__label">
                       Style {variant}
                       {!done && <span className="ig-template-card__loading-dot" />}
+                      {done && <span className="ig-template-card__ready-dot">Ready</span>}
                     </div>
                     <div className="ig-template-card__img-wrap">
                       {preview ? (
@@ -421,13 +459,11 @@ export default function InfographicPage() {
                           className={`ig-template-card__img${done ? "" : " is-partial"}`}
                         />
                       ) : (
-                        <div className="ig-template-card__skeleton">
-                          <span className="skinlog__spinner" />
-                        </div>
+                        <div className="ig-template-card__skeleton" />
                       )}
                     </div>
                     <div className="ig-template-card__cta">
-                      {isReady ? "Edit this style" : "Generating…"}
+                      {isReady ? "Edit this style →" : "Generating…"}
                     </div>
                   </button>
                 );
