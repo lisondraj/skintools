@@ -45,18 +45,20 @@ function AlbumStack({
       style={{ "--album-step-count": album.steps.length } as CSSProperties}
     >
       <div className="remorph-album__stack">
-        <button
-          type="button"
-          className="remorph-album__delete"
-          aria-label="Delete bundle"
-          onClick={() => {
-            deleteAlbum(album.id);
-            onAlbumsChange();
-            onDeleteAlbum(album.id);
-          }}
-        >
-          ×
-        </button>
+        {album.steps.length > 1 && (
+          <button
+            type="button"
+            className="remorph-album__delete"
+            aria-label="Delete bundle"
+            onClick={() => {
+              deleteAlbum(album.id);
+              onAlbumsChange();
+              onDeleteAlbum(album.id);
+            }}
+          >
+            ×
+          </button>
+        )}
 
         {album.steps.map((step, index) => (
           <AlbumStackLayer
