@@ -328,9 +328,6 @@ export default function RemorphPage() {
   const handlePromptFocus = useCallback(() => {
     if (!image && !splitMode) {
       setPromptEntryOpen(true);
-      requestAnimationFrame(() => {
-        document.getElementById("remorph-entry-prompt")?.focus();
-      });
       return;
     }
     document.getElementById("remorph-prompt")?.focus();
@@ -597,9 +594,6 @@ export default function RemorphPage() {
     <div className="remorph__shell">
       <header className="remorph__header">
         <h1 className="remorph__logo">Remorph</h1>
-        <p className="remorph__tagline">
-          Paint a region, prompt an edit — everything else stays the same.
-        </p>
       </header>
 
       <div
@@ -616,34 +610,15 @@ export default function RemorphPage() {
 
             <EntryBoxes
               onUploadClick={() => fileInputRef.current?.click()}
-              onPromptClick={handlePromptFocus}
+              promptOpen={promptEntryOpen}
+              onPromptOpen={() => setPromptEntryOpen(true)}
+              prompt={prompt}
+              onPromptChange={setPrompt}
+              onPromptSubmit={() => void handleGenerate()}
               onHistoryDrop={handleHistoryEntryDrop}
               busy={busy}
               historyDropActive={splitDropHint || dropHover}
             />
-
-            {promptEntryOpen && (
-              <div className="remorph-entry-prompt">
-                <label className="remorph__label" htmlFor="remorph-entry-prompt">
-                  Prompt
-                </label>
-                <textarea
-                  id="remorph-entry-prompt"
-                  className="remorph__textarea"
-                  value={prompt}
-                  onChange={(event) => setPrompt(event.target.value)}
-                  placeholder="Small brown macule on fair skin, clinical close-up..."
-                  disabled={busy}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" && !event.shiftKey) {
-                      event.preventDefault();
-                      void handleGenerate();
-                    }
-                  }}
-                />
-                <p className="remorph-entry-prompt__hint">Press Enter to generate</p>
-              </div>
-            )}
 
             {busy && (
               <div className="remorph__drop-overlay" aria-hidden>

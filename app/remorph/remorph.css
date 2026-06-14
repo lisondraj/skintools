@@ -58,13 +58,13 @@
 
 .remorph__workspace--entry {
   grid-template-columns: 1fr;
-  overflow-x: auto;
+  width: 100%;
+  min-width: 0;
 }
 
 .remorph-entry-area {
   position: relative;
-  width: fit-content;
-  min-width: calc(var(--remorph-stage-size) * 3 + 24px);
+  width: 100%;
   max-width: 100%;
 }
 
@@ -74,11 +74,10 @@
 }
 
 .remorph-entry {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
-  align-items: flex-start;
-  width: fit-content;
-  min-width: calc(var(--remorph-stage-size) * 3 + 24px);
+  width: 100%;
 }
 
 .remorph-entry__box {
@@ -87,11 +86,8 @@
   align-items: center;
   justify-content: center;
   gap: 10px;
-  flex: 0 0 var(--remorph-stage-size);
-  width: var(--remorph-stage-size);
-  min-width: var(--remorph-stage-size);
-  height: var(--remorph-stage-size);
-  min-height: var(--remorph-stage-size);
+  width: 100%;
+  aspect-ratio: 1 / 1;
   padding: 20px;
   border: 1px dashed var(--remorph-border);
   border-radius: var(--remorph-radius);
@@ -103,14 +99,58 @@
   box-sizing: border-box;
 }
 
-.remorph-entry-prompt {
-  width: calc(var(--remorph-stage-size) * 3 + 24px);
-  margin-top: 16px;
+.remorph-entry__box-trigger {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
 }
 
-.remorph-entry-prompt__hint {
-  margin: 8px 0 0;
-  font-size: 12px;
+.remorph-entry__box-trigger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.remorph-entry__box--prompt {
+  cursor: default;
+  padding: 12px;
+}
+
+.remorph-entry__box--prompt.is-open {
+  justify-content: stretch;
+  gap: 8px;
+}
+
+.remorph-entry__prompt-input {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  padding: 10px;
+  border: 1px solid var(--remorph-border);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+  resize: none;
+  box-sizing: border-box;
+}
+
+.remorph-entry__prompt-input:focus {
+  outline: 2px solid rgba(0, 0, 0, 0.1);
+  outline-offset: 1px;
+}
+
+.remorph-entry__prompt-hint {
+  font-size: 11px;
   color: var(--remorph-muted);
 }
 

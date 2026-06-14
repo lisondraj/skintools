@@ -1,10 +1,15 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { REMORPH_DRAG_MIME, type RemorphDragStep } from "@/lib/remorph/types";
 
 type EntryBoxesProps = {
   onUploadClick: () => void;
-  onPromptClick: () => void;
+  promptOpen: boolean;
+  onPromptOpen: () => void;
+  prompt: string;
+  onPromptChange: (value: string) => void;
+  onPromptSubmit: () => void;
   onHistoryDrop: (payload: RemorphDragStep) => void;
   busy?: boolean;
   historyDropActive?: boolean;
@@ -12,11 +17,23 @@ type EntryBoxesProps = {
 
 export function EntryBoxes({
   onUploadClick,
-  onPromptClick,
+  promptOpen,
+  onPromptOpen,
+  prompt,
+  onPromptChange,
+  onPromptSubmit,
   onHistoryDrop,
   busy = false,
   historyDropActive = false,
 }: EntryBoxesProps) {
+  const promptRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (promptOpen) {
+      promptRef.current?.focus();
+    }
+  }, [promptOpen]);
+
   const handleHistoryDragOver = (event: React.DragEvent) => {
     if (!event.dataTransfer.types.includes(REMORPH_DRAG_MIME)) return;
     event.preventDefault();
@@ -49,17 +66,42 @@ export function EntryBoxes({
         <span className="remorph-entry__label">Upload image</span>
       </button>
 
-      <button
-        type="button"
-        className="remorph-entry__box"
-        onClick={onPromptClick}
-        disabled={busy}
+      <div
+        className={`remorph-entry__box remorph-entry__box--prompt ${promptOpen ? "is-open" : ""}`}
       >
-        <span className="remorph-entry__icon" aria-hidden>
-          ✦
-        </span>
-        <span className="remorph-entry__label">Prompt image</span>
-      </button>
+        {promptOpen ? (
+          <>
+            <textarea
+              ref={promptRef}
+              id="remorph-entry-prompt"
+              className="remorph-entry__prompt-input"
+              value={prompt}
+              onChange={(event) => onPromptChange(event.target.value)}
+              placeholder="Describe a close-up skin lesion photo..."
+              disabled={busy}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault();
+                  onPromptSubmit();
+                }
+              }}
+            />
+            <span className="remorph-entry__prompt-hint">Enter to generate</span>
+          </>
+        ) : (
+          <button
+            type="button"
+            className="remorph-entry__box-trigger"
+            onClick={onPromptOpen}
+            disabled={busy}
+          >
+            <span className="remorph-entry__icon" aria-hidden>
+              ✦
+            </span>
+            <span className="remorph-entry__label">Prompt image</span>
+          </button>
+        )}
+      </div>
 
       <div
         className={`remorph-entry__box remorph-entry__box--drop ${historyDropActive ? "is-active" : ""}`}
