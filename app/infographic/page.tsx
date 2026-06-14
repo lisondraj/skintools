@@ -180,7 +180,7 @@ export default function InfographicPage() {
 
   if (step === "editor" && activeDesign) {
     return (
-      <div className="skinlog__inner ig-shell">
+      <div className="skinlog__inner ig-shell ig-shell--editor">
         <InfographicEditor
           design={activeDesign}
           qualityMode={qualityMode}

@@ -80,10 +80,7 @@ export default function ModulesPage() {
         prompt,
         existingText: selected?.kind === "text" ? selected.text : undefined,
         deckTitle: deck.title,
-        slideContext:
-          activeSlide.kind === "patient-sim"
-            ? "Virtual patient simulation slide"
-            : `Slide ${activeIndex + 1}`,
+        slideContext: `Slide ${activeIndex + 1}`,
       });
 
       if (mode === "generate") {

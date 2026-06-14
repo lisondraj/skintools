@@ -67,41 +67,46 @@ export function InfographicEditor({ design, qualityMode: initialQuality, onBack 
 
   return (
     <div className="ig-editor">
-      <header className="skinlog__header">
-        <Link href="/infographic" className="skinlog__logo">
+      <header className="ig-editor__header">
+        <Link href="/infographic" className="ig-editor__logo">
           Infographic Builder
         </Link>
+        <span className="ig-editor__badge">Style {design.variant}</span>
       </header>
 
-      <div className="ig-editor__bar">
-        <button
-          type="button"
-          className="skinlog__btn skinlog__btn--secondary"
-          onClick={onBack}
-          disabled={busy}
-        >
-          Back
-        </button>
-        <button
-          type="button"
-          className="skinlog__btn skinlog__btn--secondary"
-          onClick={handleUndo}
-          disabled={!canUndo || busy}
-        >
-          Undo
-        </button>
-        {exportMsg && <span className="ig-editor__msg">{exportMsg}</span>}
-        <button
-          type="button"
-          className="skinlog__btn"
-          onClick={handleDownload}
-          disabled={busy}
-        >
-          Download PNG
-        </button>
+      <div className="ig-editor__toolbar">
+        <div className="ig-editor__toolbar-group">
+          <button
+            type="button"
+            className="ig-editor__btn ig-editor__btn--secondary"
+            onClick={onBack}
+            disabled={busy}
+          >
+            Back
+          </button>
+          <button
+            type="button"
+            className="ig-editor__btn ig-editor__btn--secondary"
+            onClick={handleUndo}
+            disabled={!canUndo || busy}
+          >
+            Undo
+          </button>
+        </div>
+        <div className="ig-editor__toolbar-group">
+          {exportMsg && <span className="ig-editor__msg">{exportMsg}</span>}
+          <button
+            type="button"
+            className="ig-editor__btn ig-editor__btn--primary"
+            onClick={handleDownload}
+            disabled={busy}
+          >
+            Download PNG
+          </button>
+        </div>
       </div>
 
-      <div className="ig-editor__canvas">
+      <div className="ig-editor__preview">
         <div className="ig-editor__image-wrap">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -118,17 +123,24 @@ export function InfographicEditor({ design, qualityMode: initialQuality, onBack 
         </div>
       </div>
 
-      {error && <div className="skinlog__error ig-editor__error">{error}</div>}
+      <div className="ig-editor__panel">
+        {error && <div className="ig-editor__error">{error}</div>}
 
-      <div className="ig-editor__controls">
+        <label className="ig-editor__prompt-label" htmlFor="ig-edit-prompt">
+          Describe your edit
+        </label>
         <div className="ig-editor__prompt-row">
           <textarea
+            id="ig-edit-prompt"
             className="ig-editor__prompt"
-            placeholder="Describe changes — e.g. make the title larger, add icons, simplify the footer…"
+            placeholder="e.g. make the title larger, simplify the footer, add icons…"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             disabled={busy}
             rows={2}
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
             onKeyDown={(e) => {
               if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                 e.preventDefault();
@@ -138,7 +150,7 @@ export function InfographicEditor({ design, qualityMode: initialQuality, onBack 
           />
           <button
             type="button"
-            className="skinlog__btn ig-editor__apply"
+            className="ig-editor__btn ig-editor__btn--primary ig-editor__apply"
             onClick={handleApply}
             disabled={busy || !prompt.trim()}
           >
@@ -172,11 +184,12 @@ export function InfographicEditor({ design, qualityMode: initialQuality, onBack 
           </div>
         ))}
 
-        <div className="ig-editor__footer-row">
-          <div className="ig-quality-toggle">
+        <div className="ig-editor__preset-group">
+          <span className="ig-editor__preset-label">Edit speed</span>
+          <div className="ig-editor__presets">
             <button
               type="button"
-              className={`ig-quality-toggle__btn${qualityMode === "fast" ? " is-active" : ""}`}
+              className={`ig-editor__preset${qualityMode === "fast" ? " is-active" : ""}`}
               onClick={() => setQualityMode("fast")}
               disabled={busy}
             >
@@ -184,17 +197,16 @@ export function InfographicEditor({ design, qualityMode: initialQuality, onBack 
             </button>
             <button
               type="button"
-              className={`ig-quality-toggle__btn${qualityMode === "standard" ? " is-active" : ""}`}
+              className={`ig-editor__preset${qualityMode === "standard" ? " is-active" : ""}`}
               onClick={() => setQualityMode("standard")}
               disabled={busy}
             >
               Standard
             </button>
           </div>
-          <p className="ig-editor__hint">
-            Style {design.variant} · Undo to revert · ⌘↵ to apply
-          </p>
         </div>
+
+        <p className="ig-editor__hint">⌘↵ to apply · Undo reverts the last edit</p>
       </div>
     </div>
   );
