@@ -1,0 +1,228 @@
+"use client";
+
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
+import type { PatientSimConfig, Slide, SlideElement } from "@/lib/modules/types";
+import { MODULES_STAGE_H, MODULES_STAGE_W } from "@/lib/modules/types";
+import { clampElement, sortByZ } from "@/lib/modules/elements";
+import { SlideElementView } from "./SlideElementView";
+import { PatientSimConfigPanel } from "./PatientSimConfigPanel";
+
+type DragState = {
+  id: string;
+  mode: "move" | "se";
+  startX: number;
+  startY: number;
+  startEl: { x: number; y: number; w: number; h: number };
+};
+
+type Props = {
+  slide: Slide;
+  selectedElementId: string | null;
+  onSelectElement: (id: string | null) => void;
+  onChangeElements: (elements: SlideElement[]) => void;
+  onChangeSim?: (sim: Partial<PatientSimConfig>) => void;
+  readOnly?: boolean;
+};
+
+export function SlideCanvas({
+  slide,
+  selectedElementId,
+  onSelectElement,
+  onChangeElements,
+  onChangeSim,
+  readOnly = false,
+}: Props) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+  const [drag, setDrag] = useState<DragState | null>(null);
+  const [textOverlay, setTextOverlay] = useState<{
+    id: string;
+    text: string;
+    style: CSSProperties;
+  } | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+
+    const ro = new ResizeObserver(() => {
+      const w = wrap.clientWidth;
+      setScale(w / MODULES_STAGE_W);
+    });
+    ro.observe(wrap);
+    return () => ro.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (textOverlay) {
+      setTimeout(() => textareaRef.current?.focus(), 16);
+    }
+  }, [textOverlay]);
+
+  const toStageCoords = useCallback(
+    (clientX: number, clientY: number) => {
+      const rect = wrapRef.current!.getBoundingClientRect();
+      return {
+        x: (clientX - rect.left) / scale,
+        y: (clientY - rect.top) / scale,
+      };
+    },
+    [scale],
+  );
+
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent, id: string, mode: "move" | "se") => {
+      if (readOnly || textOverlay) return;
+      e.currentTarget.setPointerCapture(e.pointerId);
+      const el = slide.elements.find((item) => item.id === id);
+      if (!el) return;
+      onSelectElement(id);
+      const pt = toStageCoords(e.clientX, e.clientY);
+      setDrag({
+        id,
+        mode,
+        startX: pt.x,
+        startY: pt.y,
+        startEl: { x: el.x, y: el.y, w: el.w, h: el.h },
+      });
+    },
+    [onSelectElement, readOnly, slide.elements, textOverlay, toStageCoords],
+  );
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!drag) return;
+      const pt = toStageCoords(e.clientX, e.clientY);
+      const dx = pt.x - drag.startX;
+      const dy = pt.y - drag.startY;
+
+      onChangeElements(
+        slide.elements.map((el) => {
+          if (el.id !== drag.id) return el;
+          if (drag.mode === "move") {
+            return clampElement({
+              ...el,
+              x: drag.startEl.x + dx,
+              y: drag.startEl.y + dy,
+            });
+          }
+          return clampElement({
+            ...el,
+            w: drag.startEl.w + dx,
+            h: drag.startEl.h + dy,
+          });
+        }),
+      );
+    },
+    [drag, onChangeElements, slide.elements, toStageCoords],
+  );
+
+  const handlePointerUp = useCallback(() => setDrag(null), []);
+
+  const handleCanvasPointerDown = (e: React.PointerEvent) => {
+    if (readOnly) return;
+    if (e.target === e.currentTarget) {
+      onSelectElement(null);
+      setTextOverlay(null);
+    }
+  };
+
+  const handleDoubleClickText = (id: string) => {
+    if (readOnly) return;
+    const el = slide.elements.find((item) => item.id === id);
+    if (!el || el.kind !== "text") return;
+    onSelectElement(id);
+    setTextOverlay({
+      id,
+      text: el.text,
+      style: {
+        left: el.x * scale,
+        top: el.y * scale,
+        width: el.w * scale,
+        height: el.h * scale,
+        fontSize: el.fontSize * scale,
+        fontWeight: el.fontWeight,
+        color: el.color,
+        textAlign: el.align,
+      },
+    });
+  };
+
+  const commitTextEdit = () => {
+    if (!textOverlay) return;
+    onChangeElements(
+      slide.elements.map((el) =>
+        el.id === textOverlay.id && el.kind === "text"
+          ? { ...el, text: textOverlay.text }
+          : el,
+      ),
+    );
+    setTextOverlay(null);
+  };
+
+  if (slide.kind === "patient-sim" && !readOnly) {
+    return (
+      <div className="modules-canvas-wrap" ref={wrapRef}>
+        <PatientSimConfigPanel
+          sim={slide.sim}
+          onChange={(sim) => onChangeSim?.(sim)}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="modules-canvas-wrap" ref={wrapRef}>
+      <div
+        className="modules-canvas"
+        style={{
+          width: MODULES_STAGE_W * scale,
+          height: MODULES_STAGE_H * scale,
+          background: slide.background,
+        }}
+        onPointerDown={handleCanvasPointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+      >
+        {sortByZ(slide.elements).map((el) => (
+          <SlideElementView
+            key={el.id}
+            element={el}
+            selected={!readOnly && selectedElementId === el.id}
+            scale={scale}
+            onPointerDown={handlePointerDown}
+            onDoubleClickText={handleDoubleClickText}
+          />
+        ))}
+
+        {slide.kind === "patient-sim" && readOnly && (
+          <div className="modules-canvas__sim-badge">Virtual patient slide</div>
+        )}
+
+        {textOverlay && (
+          <textarea
+            ref={textareaRef}
+            className="modules-canvas__text-overlay"
+            style={textOverlay.style}
+            value={textOverlay.text}
+            onChange={(e) =>
+              setTextOverlay((prev) => prev && { ...prev, text: e.target.value })
+            }
+            onBlur={commitTextEdit}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setTextOverlay(null);
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) commitTextEdit();
+            }}
+          />
+        )}
+      </div>
+    </div>
+  );
+}

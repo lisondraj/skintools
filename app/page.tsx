@@ -1,6 +1,30 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
+
+const TOOLS = [
+  {
+    name: "Skin Archive",
+    href: "/skinlog",
+    meta: "Track skin changes over time",
+  },
+  {
+    name: "Remorph",
+    href: "/remorph",
+    meta: "Region-targeted lesion editing",
+  },
+  {
+    name: "Infographic Builder",
+    href: "/infographic",
+    meta: "AI patient education posters",
+  },
+  {
+    name: "Modules",
+    href: "/modules",
+    meta: "Slides + virtual patient voice sim",
+  },
+] as const;
 
 const SPACES = [
   {
@@ -152,6 +176,24 @@ export default function Home() {
                 {upRightArrow}
               </button>
             </div>
+          </div>
+        </section>
+
+        <section className="skin-section" aria-labelledby="tools-heading">
+          <div className="skin-section__header">
+            <h2 id="tools-heading" className="skin-section__title">
+              Tools
+            </h2>
+          </div>
+          <div className="skin-section__scroll">
+            {TOOLS.map((tool) => (
+              <Link key={tool.href} href={tool.href} className="skin-card skin-card--link">
+                <div className="skin-card__body">
+                  <h3 className="skin-card__name">{tool.name}</h3>
+                  <p className="skin-card__meta">{tool.meta}</p>
+                </div>
+              </Link>
+            ))}
           </div>
         </section>
 

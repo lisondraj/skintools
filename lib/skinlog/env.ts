@@ -16,3 +16,13 @@ export function getOpenAiModel(): string {
 export function isOpenAiConfigured(): boolean {
   return Boolean(getOpenAiKey());
 }
+
+export function getRealtimeModel(): string {
+  return (
+    process.env["OPENAI_REALTIME_MODEL"]?.trim() || "gpt-4o-realtime-preview"
+  );
+}
+
+export function getDefaultRealtimeVoice(): string {
+  return process.env["OPENAI_REALTIME_VOICE"]?.trim() || "alloy";
+}

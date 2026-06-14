@@ -264,6 +264,26 @@ h6 {
   scroll-snap-align: start;
 }
 
+.skin-card--link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: var(--skin-surface-radius);
+  padding: 16px 14px;
+  background: #fff;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.skin-card--link:hover {
+  border-color: rgba(0, 0, 0, 0.16);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.skin-card--link .skin-card__body {
+  padding-top: 0;
+}
+
 .skin-card__media {
   position: relative;
   width: 100%;
