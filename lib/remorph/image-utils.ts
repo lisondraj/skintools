@@ -84,7 +84,7 @@ export function buildMaskFromSelection(
   return { mask: maskCanvas.toDataURL("image/png"), hasSelection };
 }
 
-/** Fit image onto a square stage with neutral padding (contain). */
+/** Fit image onto a square stage, center-cropped to fill (cover). */
 export async function normalizeToStage(
   source: string,
   size = REMORPH_STAGE_SIZE,
@@ -96,10 +96,7 @@ export async function normalizeToStage(
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Could not prepare canvas.");
 
-  ctx.fillStyle = "#e8e4df";
-  ctx.fillRect(0, 0, size, size);
-
-  const scale = Math.min(size / img.width, size / img.height);
+  const scale = Math.max(size / img.width, size / img.height);
   const w = img.width * scale;
   const h = img.height * scale;
   const x = (size - w) / 2;
