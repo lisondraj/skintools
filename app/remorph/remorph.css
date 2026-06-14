@@ -54,8 +54,9 @@
 }
 
 .remorph__workspace--split {
-  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.9fr);
+  display: block;
   overflow-x: auto;
+  overflow-y: visible;
 }
 
 .remorph__workspace--entry {
@@ -341,33 +342,38 @@
 }
 
 .remorph__stage-wrap--split {
-  width: calc(var(--remorph-stage-size) * 2 + 12px);
-  min-width: calc(var(--remorph-stage-size) * 2 + 12px);
-  height: var(--remorph-stage-size);
-  aspect-ratio: auto;
+  width: fit-content;
+  height: fit-content;
+  min-width: 0;
   margin: 0;
-  overflow: visible;
-  background: transparent;
+  padding: 0;
   border: none;
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
+  box-shadow: none;
+}
+
+.remorph__stage-wrap--split.is-drop-target {
+  border: none;
+  box-shadow: none;
 }
 
 .remorph-split {
   display: flex;
+  flex-direction: row;
   gap: 12px;
   align-items: flex-start;
   width: fit-content;
-  min-width: calc(var(--remorph-stage-size) * 2 + 12px);
-  height: var(--remorph-stage-size);
+  height: fit-content;
 }
 
 .remorph-split__pane {
   position: relative;
   display: block;
-  flex: 0 0 var(--remorph-stage-size);
-  width: var(--remorph-stage-size);
-  min-width: var(--remorph-stage-size);
-  height: var(--remorph-stage-size);
-  min-height: var(--remorph-stage-size);
+  flex: 0 0 var(--split-pane-size, var(--remorph-stage-size));
+  width: var(--split-pane-size, var(--remorph-stage-size));
+  height: var(--split-pane-size, var(--remorph-stage-size));
   padding: 0;
   border: 1px solid var(--remorph-border);
   border-radius: var(--remorph-radius);
