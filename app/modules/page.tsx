@@ -37,7 +37,7 @@ import {
   updateSlide,
 } from "@/lib/modules/storage";
 import { buildSlideTemplate, type SlideTemplateId } from "@/lib/modules/templates";
-import { buildSlideAIContext } from "@/lib/modules/context";
+import { buildDeckAIContext, buildSlideAIContext } from "@/lib/modules/context";
 import { SHAPE_OPTIONS } from "@/lib/modules/shapes";
 import type { AutofillMode, Deck, ShapeKind, Slide, SlideElement } from "@/lib/modules/types";
 
@@ -64,7 +64,7 @@ export default function ModulesPage() {
 
   const getSlideContext = useCallback(
     (selectedId?: string | null) => {
-      if (!deck) return "";
+      if (!deck) return { text: "", images: [] };
       return buildSlideAIContext({
         deck,
         slideIndex: activeIndex,
@@ -166,7 +166,7 @@ export default function ModulesPage() {
   async function handleAutofill(mode: AutofillMode, prompt?: string) {
     if (!deck || !activeSlide || activeSlide.kind !== "content") return;
     const selected = activeSlide.elements.find((el) => el.id === selectedElementId);
-    const slideContext = getSlideContext();
+    const ctx = getSlideContext();
 
     setAutofillBusy(true);
     setError("");
@@ -186,7 +186,8 @@ export default function ModulesPage() {
         selectionStart: useSelection ? textSelection.start : undefined,
         selectionEnd: useSelection ? textSelection.end : undefined,
         deckTitle: deck.title,
-        slideContext,
+        slideContext: ctx.text,
+        contextImages: ctx.images,
       });
 
       if (mode === "generate") {
@@ -213,10 +214,12 @@ export default function ModulesPage() {
     setAutofillBusy(true);
     setError("");
     try {
+      const ctx = getSlideContext();
       const notes = await autofillText({
         mode: "notes",
         deckTitle: deck.title,
-        slideContext: getSlideContext(),
+        slideContext: ctx.text,
+        contextImages: ctx.images,
       });
       const next = updateSlide(activeSlide.id, (slide) => ({ ...slide, notes }));
       if (next) setDeck(next);
@@ -232,10 +235,12 @@ export default function ModulesPage() {
     setAutofillBusy(true);
     setError("");
     try {
+      const ctx = getSlideContext();
       const layout = await autofillSlide({
         prompt,
         deckTitle: deck.title,
-        slideContext: getSlideContext(),
+        slideContext: ctx.text,
+        contextImages: ctx.images,
       });
       const { elements } = slideElementsFromLayout(layout);
       updateElements(elements);
@@ -252,10 +257,13 @@ export default function ModulesPage() {
     setAutofillBusy(true);
     setError("");
     try {
+      const deckCtx = buildDeckAIContext(deck);
       const result = await generateDeck({
         prompt,
         slideCount,
         deckTitle: deck.title,
+        slideContext: deckCtx.text,
+        contextImages: deckCtx.images,
       });
 
       const slides: Slide[] = result.slides.map((layout) => {

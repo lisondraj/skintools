@@ -1,4 +1,22 @@
-import type { Deck, Slide, SlideElement } from "./types";
+import type { Deck, ImageElement, Slide, SlideElement } from "./types";
+import type { SlideContextImage } from "./types";
+import { isSlideBackgroundImage } from "./background";
+
+export type SlideAIContext = {
+  text: string;
+  images: SlideContextImage[];
+};
+
+const MAX_CONTEXT_IMAGES = 8;
+
+function isSendableImageUrl(url: string): boolean {
+  const value = url.trim();
+  return (
+    value.startsWith("data:image/") ||
+    value.startsWith("http://") ||
+    value.startsWith("https://")
+  );
+}
 
 function slideTextSummary(slide: Slide, maxLen = 280): string {
   const chunks = slide.elements
@@ -12,14 +30,62 @@ function slideTextSummary(slide: Slide, maxLen = 280): string {
   return joined.length > maxLen ? `${joined.slice(0, maxLen)}…` : joined;
 }
 
+function imagesFromSlide(
+  slide: Slide,
+  label: string,
+  selectedElementId?: string | null,
+): SlideContextImage[] {
+  if (slide.kind !== "content") return [];
+
+  const images: SlideContextImage[] = [];
+
+  if (isSlideBackgroundImage(slide.background) && isSendableImageUrl(slide.background)) {
+    images.push({ label: `${label} · background`, url: slide.background });
+  }
+
+  slide.elements
+    .filter((el): el is ImageElement => el.kind === "image")
+    .sort((a, b) => a.z - b.z)
+    .forEach((el, i) => {
+      if (!isSendableImageUrl(el.src)) return;
+      const marker = el.id === selectedElementId ? " [SELECTED]" : "";
+      images.push({ label: `${label} · image ${i + 1}${marker}`, url: el.src });
+    });
+
+  return images;
+}
+
+function mergeContextImages(...groups: SlideContextImage[][]): SlideContextImage[] {
+  const seen = new Set<string>();
+  const merged: SlideContextImage[] = [];
+
+  for (const group of groups) {
+    for (const image of group) {
+      if (seen.has(image.url)) continue;
+      seen.add(image.url);
+      merged.push(image);
+      if (merged.length >= MAX_CONTEXT_IMAGES) return merged;
+    }
+  }
+
+  return merged;
+}
+
+function countSlideImages(slide: Slide): number {
+  if (slide.kind !== "content") return 0;
+  let count = slide.elements.filter((el) => el.kind === "image").length;
+  if (isSlideBackgroundImage(slide.background)) count += 1;
+  return count;
+}
+
 export function buildSlideAIContext(options: {
   deck: Deck;
   slideIndex: number;
   selectedElementId?: string | null;
-}): string {
+}): SlideAIContext {
   const { deck, slideIndex, selectedElementId } = options;
   const slide = deck.slides[slideIndex];
-  if (!slide) return "";
+  if (!slide) return { text: "", images: [] };
 
   const lines: string[] = [
     `Presentation title: "${deck.title}"`,
@@ -48,15 +114,64 @@ export function buildSlideAIContext(options: {
     lines.push("All text on this slide: (none)");
   }
 
-  if (slide.elements.some((el) => el.kind === "image")) {
-    lines.push(`Images on slide: ${slide.elements.filter((el) => el.kind === "image").length}`);
+  const imageCount = countSlideImages(slide);
+  if (imageCount > 0) {
+    lines.push(`Images on this slide: ${imageCount}`);
   }
 
   if (slide.notes?.trim()) {
     lines.push(`Speaker notes: ${slide.notes.trim()}`);
   }
 
-  return lines.join("\n");
+  const images = mergeContextImages(
+    imagesFromSlide(slide, `Slide ${slideIndex + 1} (current)`, selectedElementId),
+    slideIndex > 0 ? imagesFromSlide(deck.slides[slideIndex - 1], `Slide ${slideIndex}`) : [],
+    slideIndex < deck.slides.length - 1
+      ? imagesFromSlide(deck.slides[slideIndex + 1], `Slide ${slideIndex + 2}`)
+      : [],
+  );
+
+  if (images.length > 0) {
+    lines.push(
+      `${images.length} slide image(s) are attached below — describe and align copy with what is shown.`,
+    );
+  }
+
+  return { text: lines.join("\n"), images };
+}
+
+/** Full-deck context for AI deck generation (text summaries + images from all slides). */
+export function buildDeckAIContext(deck: Deck): SlideAIContext {
+  const lines: string[] = [
+    `Presentation title: "${deck.title}"`,
+    `Existing deck: ${deck.slides.length} slide(s)`,
+  ];
+
+  deck.slides.forEach((slide, index) => {
+    if (slide.kind === "patient-sim") {
+      lines.push(`Slide ${index + 1}: virtual patient simulation`);
+      return;
+    }
+    lines.push(`Slide ${index + 1}: ${slideTextSummary(slide, 200)}`);
+    if (countSlideImages(slide) > 0) {
+      lines.push(`  (${countSlideImages(slide)} image(s) on this slide)`);
+    }
+    if (slide.notes?.trim()) {
+      lines.push(`  Notes: ${slide.notes.trim().slice(0, 120)}${slide.notes.length > 120 ? "…" : ""}`);
+    }
+  });
+
+  const images = mergeContextImages(
+    ...deck.slides.map((slide, index) => imagesFromSlide(slide, `Slide ${index + 1}`)),
+  );
+
+  if (images.length > 0) {
+    lines.push(
+      `${images.length} slide image(s) from this deck are attached — incorporate or reference existing visuals where relevant.`,
+    );
+  }
+
+  return { text: lines.join("\n"), images };
 }
 
 export function mergeTextSelection(

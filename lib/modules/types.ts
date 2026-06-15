@@ -66,6 +66,8 @@ export interface PatientSimConfig {
   persona: string;
   scenario: string;
   difficulty: PatientSimDifficulty;
+  /** Consultation time limit in minutes (2–20). Default 5. */
+  timeLimitMinutes?: number;
 }
 
 export type SlideKind = "content" | "patient-sim";
@@ -112,6 +114,13 @@ export interface AutofillReq {
   deckTitle?: string;
   /** Rich slide + deck context for all AI calls. */
   slideContext?: string;
+  /** Slide images for vision context (current + adjacent slides). */
+  contextImages?: SlideContextImage[];
+}
+
+export interface SlideContextImage {
+  label: string;
+  url: string;
 }
 
 export interface AutofillRes {
@@ -139,6 +148,8 @@ export interface GenerateDeckReq {
   prompt: string;
   slideCount?: number;
   deckTitle?: string;
+  slideContext?: string;
+  contextImages?: SlideContextImage[];
 }
 
 export interface GeneratedDeckSlide {
@@ -166,6 +177,7 @@ export const DEFAULT_PATIENT_SIM: PatientSimConfig = {
   scenario:
     "You just received a diagnosis and want clear, reassuring answers about what it means and what to do next.",
   difficulty: "moderate",
+  timeLimitMinutes: 5,
 };
 
 /** Default ElevenLabs voice when ELEVENLABS_VOICE_ID is not set (SkinTools agent voice). */

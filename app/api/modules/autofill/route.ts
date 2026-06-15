@@ -37,6 +37,7 @@ export async function POST(request: Request) {
         prompt: body.prompt,
         deckTitle: body.deckTitle,
         slideContext: body.slideContext,
+        contextImages: body.contextImages,
       });
       return NextResponse.json(layout satisfies SlideLayoutRes);
     }
@@ -45,11 +46,12 @@ export async function POST(request: Request) {
       const text = await autofillText("notes", {
         deckTitle: body.deckTitle,
         slideContext: body.slideContext,
+        contextImages: body.contextImages,
       });
       return NextResponse.json({ text } satisfies AutofillRes);
     }
 
-    if (body.mode === "generate" && !body.prompt?.trim() && !body.slideContext?.trim()) {
+    if (body.mode === "generate" && !body.prompt?.trim() && !body.slideContext?.trim() && !body.contextImages?.length) {
       return NextResponse.json(
         { error: "Provide a prompt or slide context for generation." },
         { status: 400 },
@@ -89,6 +91,7 @@ export async function POST(request: Request) {
       selectionEnd: body.selectionEnd,
       deckTitle: body.deckTitle,
       slideContext: body.slideContext,
+      contextImages: body.contextImages,
     });
 
     return NextResponse.json({ text } satisfies AutofillRes);

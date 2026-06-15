@@ -247,7 +247,7 @@ export function ElementPropertiesPanel({
         <div className="modules-panel__section">
           <h2 className="modules-panel__heading">AI</h2>
           <p className="modules-panel__hint">
-            AI uses this slide&apos;s content, neighbouring slides, and deck title as context.
+            AI uses this slide&apos;s text, images, neighbouring slides, and deck title as context.
           </p>
           <label className="modules-field">
             <span className="modules-field__label">Generate full slide</span>

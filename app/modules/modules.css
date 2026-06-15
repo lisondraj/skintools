@@ -784,6 +784,47 @@
   color: var(--mod-muted);
 }
 
+.vsp-runner__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.vsp-runner__timer {
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--mod-surface);
+  border: 1px solid var(--mod-border);
+  color: var(--mod-text);
+}
+
+.vsp-runner__timer.is-low {
+  color: #b91c1c;
+  border-color: rgba(220, 38, 38, 0.25);
+  background: rgba(220, 38, 38, 0.06);
+}
+
+.vsp-runner__mic-btn {
+  flex: 1;
+  font-weight: 600;
+}
+
+.vsp-runner__mic-btn.is-live {
+  background: #059669;
+  border-color: #059669;
+  color: #fff;
+}
+
+.vsp-runner__mic-btn.is-live:hover:not(:disabled) {
+  background: #047857;
+  border-color: #047857;
+  color: #fff;
+}
+
 .vsp-runner__pill--listening {
   border-color: rgba(5, 150, 105, 0.25);
   background: rgba(5, 150, 105, 0.08);

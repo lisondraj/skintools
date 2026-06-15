@@ -1,12 +1,15 @@
 "use client";
 
 import type { PatientSimConfig, Slide } from "@/lib/modules/types";
+import { getSimTimeLimitMinutes } from "@/lib/modules/realtime";
 
 const DIFFICULTIES: { id: PatientSimConfig["difficulty"]; label: string; hint: string }[] = [
   { id: "easy", label: "Easy", hint: "Cooperative, clear answers" },
   { id: "moderate", label: "Moderate", hint: "Some anxiety, follow-ups" },
   { id: "challenging", label: "Challenging", hint: "Emotional, vague symptoms" },
 ];
+
+const TIME_LIMITS = [3, 5, 7, 10, 15] as const;
 
 type Props = {
   sim?: PatientSimConfig;
@@ -18,7 +21,10 @@ export function PatientSimConfigPanel({ sim, onChange }: Props) {
     persona: "",
     scenario: "",
     difficulty: "moderate" as const,
+    timeLimitMinutes: 5,
   };
+
+  const timeLimit = getSimTimeLimitMinutes(config);
 
   return (
     <div className="vsp-config">
@@ -33,7 +39,7 @@ export function PatientSimConfigPanel({ sim, onChange }: Props) {
         <div>
           <h2 className="vsp-config__title">Virtual patient</h2>
           <p className="vsp-config__lead">
-            Learners speak with this AI patient in real time during presentation.
+            Learners speak with this AI patient in real time. Mic is push-to-talk — unmute only when speaking.
           </p>
         </div>
       </header>
@@ -76,6 +82,22 @@ export function PatientSimConfigPanel({ sim, onChange }: Props) {
           ))}
         </div>
       </div>
+
+      <div className="modules-field">
+        <span className="modules-field__label">Time limit ({timeLimit} min)</span>
+        <div className="vsp-config__difficulty">
+          {TIME_LIMITS.map((minutes) => (
+            <button
+              key={minutes}
+              type="button"
+              className={`vsp-config__diff-btn${timeLimit === minutes ? " is-active" : ""}`}
+              onClick={() => onChange({ timeLimitMinutes: minutes })}
+            >
+              <span className="vsp-config__diff-label">{minutes} min</span>
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -93,7 +115,9 @@ export function PatientSimSlidePreview({ slide }: { slide: Slide }) {
       <h3 className="vsp-preview__title">{sim?.persona || "Patient persona not set"}</h3>
       <p className="vsp-preview__scenario">{sim?.scenario || "Add a scenario in the editor."}</p>
       {difficulty && (
-        <span className="vsp-preview__meta">{difficulty.label} · {difficulty.hint}</span>
+        <span className="vsp-preview__meta">
+          {difficulty.label} · {getSimTimeLimitMinutes(sim ?? { persona: "", scenario: "", difficulty: "moderate" })} min
+        </span>
       )}
     </div>
   );

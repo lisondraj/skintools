@@ -17,6 +17,8 @@ export async function POST(request: Request) {
       prompt: body.prompt,
       slideCount: body.slideCount,
       deckTitle: body.deckTitle,
+      slideContext: body.slideContext,
+      contextImages: body.contextImages,
     });
 
     return NextResponse.json(result satisfies GenerateDeckRes);

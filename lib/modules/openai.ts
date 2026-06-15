@@ -1,5 +1,6 @@
 import { getOpenAiKey } from "@/lib/skinlog/env";
-import type { AutofillMode } from "./types";
+import { buildVisionUserContent } from "./openai-vision";
+import type { AutofillMode, SlideContextImage } from "./types";
 
 type AutofillOptions = {
   prompt?: string;
@@ -9,6 +10,7 @@ type AutofillOptions = {
   selectionEnd?: number;
   deckTitle?: string;
   slideContext?: string;
+  contextImages?: SlideContextImage[];
 };
 
 function modeInstruction(mode: AutofillMode, hasSelection: boolean): string {
@@ -120,9 +122,12 @@ export async function autofillText(
         {
           role: "system",
           content:
-            "You write clear dermatology presentation copy for Ontario clinics — patient education and clinician training. Use Canadian spelling. When editing a selection within a text box, return the complete text box with only that selection changed.",
+            "You write clear dermatology presentation copy for Ontario clinics — patient education and clinician training. Use Canadian spelling. When slide images are attached, reference what you see in them. When editing a selection within a text box, return the complete text box with only that selection changed.",
         },
-        { role: "user", content: userPrompt },
+        {
+          role: "user",
+          content: buildVisionUserContent(userPrompt, options.contextImages),
+        },
       ],
     }),
   });
@@ -158,6 +163,7 @@ export async function autofillSlideLayout(options: {
   prompt: string;
   deckTitle?: string;
   slideContext?: string;
+  contextImages?: SlideContextImage[];
 }): Promise<{ title: string; body: string }> {
   const key = getOpenAiKey();
   if (!key) throw new Error("OpenAI API key not configured.");
@@ -188,9 +194,12 @@ Return JSON only:
         {
           role: "system",
           content:
-            "You write clear, patient-friendly dermatology presentation copy for Ontario clinics. Return valid JSON only.",
+            "You write clear, patient-friendly dermatology presentation copy for Ontario clinics. When slide images are attached, align title and body with what is shown. Return valid JSON only.",
         },
-        { role: "user", content: userPrompt },
+        {
+          role: "user",
+          content: buildVisionUserContent(userPrompt, options.contextImages),
+        },
       ],
     }),
   });
@@ -222,17 +231,24 @@ export async function autofillDeck(options: {
   prompt: string;
   slideCount?: number;
   deckTitle?: string;
+  slideContext?: string;
+  contextImages?: SlideContextImage[];
 }): Promise<{ deckTitle: string; slides: Array<{ title: string; body: string; notes?: string }> }> {
   const key = getOpenAiKey();
   if (!key) throw new Error("OpenAI API key not configured.");
 
   const count = Math.min(Math.max(options.slideCount ?? 6, 3), 12);
 
+  const contextBlock = options.slideContext?.trim()
+    ? `\n\n--- Existing deck context ---\n${options.slideContext.trim()}\n--- End context ---`
+    : "";
+
   const userPrompt = `Create a complete dermatology presentation deck.
 
 Topic: ${options.prompt.trim()}
 Number of slides: ${count}
 ${options.deckTitle?.trim() ? `Suggested deck title: ${options.deckTitle.trim()}` : ""}
+${contextBlock}
 
 Return JSON only:
 {
@@ -262,9 +278,12 @@ Include a title slide first, content slides in logical order, and a summary or k
         {
           role: "system",
           content:
-            "You write clear dermatology presentation decks for Ontario clinics. Use Canadian spelling. Format slide bodies with • bullets and **bold** emphasis.",
+            "You write clear dermatology presentation decks for Ontario clinics. Use Canadian spelling. When existing slide images are attached, reference or build on those visuals. Format slide bodies with • bullets and **bold** emphasis.",
         },
-        { role: "user", content: userPrompt },
+        {
+          role: "user",
+          content: buildVisionUserContent(userPrompt, options.contextImages),
+        },
       ],
     }),
   });
