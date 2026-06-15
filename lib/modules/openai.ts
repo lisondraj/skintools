@@ -133,6 +133,19 @@ export async function autofillText(
   return text;
 }
 
+function normalizeSlideField(value: unknown): string {
+  if (typeof value === "string") return value.trim();
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => (typeof item === "string" ? item.trim() : String(item)))
+      .filter(Boolean)
+      .map((line) => (line.startsWith("•") ? line : `• ${line}`))
+      .join("\n");
+  }
+  if (value == null) return "";
+  return String(value).trim();
+}
+
 export async function autofillSlideLayout(options: {
   prompt: string;
   deckTitle?: string;
@@ -186,9 +199,13 @@ Return JSON only:
   const raw = data.choices[0]?.message.content?.trim();
   if (!raw) throw new Error("Empty response from OpenAI.");
 
-  const parsed = JSON.parse(raw) as { title?: string; body?: string };
+  const parsed = JSON.parse(raw) as {
+    title?: unknown;
+    body?: unknown;
+    bullets?: unknown;
+  };
   return {
-    title: parsed.title?.trim() || "Untitled",
-    body: parsed.body?.trim() || "",
+    title: normalizeSlideField(parsed.title) || "Untitled",
+    body: normalizeSlideField(parsed.body ?? parsed.bullets),
   };
 }
