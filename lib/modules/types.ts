@@ -128,8 +128,9 @@ export interface AutofillRes {
 }
 
 export interface SlideLayoutRes {
-  title: string;
-  body: string;
+  elements: SlideElement[];
+  background: string;
+  notes?: string;
 }
 
 export type SlideImagePurpose = "image" | "background" | "infographic";

@@ -2,6 +2,10 @@ import { getOpenAiKey } from "@/lib/skinlog/env";
 import { normalizeGeneratedSlide } from "./deck-builder";
 import { SLIDE_FONT_STYLES } from "./fonts";
 import { buildVisionUserContent } from "./openai-vision";
+import {
+  SLIDE_CONTENT_STYLE_GUIDE,
+  SLIDE_LAYOUT_PICK_GUIDE,
+} from "./slide-content-guide";
 import type { AutofillMode, GeneratedDeckSlide, SlideContextImage } from "./types";
 
 type AutofillOptions = {
@@ -38,7 +42,7 @@ function modeInstruction(mode: AutofillMode, hasSelection: boolean): string {
     case "clinical":
       return `Rewrite in professional clinical language suitable for dermatology trainees. ${scope}`;
     case "bullets":
-      return `Convert to scannable bullet points (use • prefix, one per line). ${scope}`;
+      return `Convert to scannable bullet points (use • prefix, one per line). Include 5–8 substantive points or grouped ## sections — not three "Label: sentence" fragments. ${scope}`;
     case "grammar":
       return `Fix grammar, spelling, and punctuation only — do not change meaning. ${scope}`;
     case "summarize":
@@ -93,8 +97,10 @@ ${contextBlock}
 
 Return ONLY the final text — no quotes, no labels.${hasSelection ? " Return the COMPLETE text box with the selection updated." : " Keep it suitable for a presentation text box."}
 
-Formatting (use when helpful):
-- **bold** for emphasis
+${SLIDE_CONTENT_STYLE_GUIDE}
+
+Formatting markup:
+- **bold** for emphasis (sparingly)
 - *italic* for terms
 - # Heading line for section titles within the box
 - ## Subheading for subsections
@@ -166,21 +172,46 @@ export async function autofillSlideLayout(options: {
   deckTitle?: string;
   slideContext?: string;
   contextImages?: SlideContextImage[];
-}): Promise<{ title: string; body: string }> {
+}): Promise<GeneratedDeckSlide> {
   const key = getOpenAiKey();
   if (!key) throw new Error("OpenAI API key not configured.");
+
+  const fontIds = SLIDE_FONT_STYLES.map((f) => f.id).join(", ");
 
   const contextBlock = options.slideContext?.trim()
     ? `\n\n--- Slide & deck context ---\n${options.slideContext.trim()}\n--- End context ---`
     : "";
 
-  const userPrompt = `Create slide content for a dermatology presentation.
+  const userPrompt = `Design one dermatology presentation slide with varied layout and rich content.
 
 Topic/prompt: ${options.prompt.trim()}
+Presentation title: ${options.deckTitle?.trim() || "(untitled)"}
 ${contextBlock}
 
+${SLIDE_CONTENT_STYLE_GUIDE}
+
+${SLIDE_LAYOUT_PICK_GUIDE}
+
+Typography: pick titleFontStyle and bodyFontStyle from (${fontIds}). Vary titleFontSize (28–44) and bodyFontSize (18–22). Set background to a soft hex (#ffffff, #f8fafc, #eef2ff, #fef3c7).
+
 Return JSON only:
-{"title":"short slide title","body":"2-4 bullet points using • prefix, one per line. Use **bold** for key terms. Use blank lines between groups."}`;
+{
+  "title": "slide title",
+  "body": "rich body — sections, paragraphs, 5–9 bullets as needed",
+  "leftBody": "only if layout is two-column",
+  "rightBody": "only if layout is two-column",
+  "notes": "3–4 sentence speaker notes with extra detail not on the slide",
+  "layout": "title-body | bullets | two-column | image-right | image-left",
+  "background": "#hex",
+  "imagePrompt": "if image-right/image-left — clinical illustration description",
+  "titleFontStyle": "font id",
+  "bodyFontStyle": "font id",
+  "titleFontSize": 36,
+  "bodyFontSize": 20,
+  "titleColor": "#111111",
+  "bodyColor": "#374151",
+  "titleAlign": "left | center"
+}`;
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -190,13 +221,13 @@ Return JSON only:
     },
     body: JSON.stringify({
       model: "gpt-4o",
-      temperature: 0.7,
+      temperature: 0.8,
       response_format: { type: "json_object" },
       messages: [
         {
           role: "system",
           content:
-            "You write clear, patient-friendly dermatology presentation copy for Ontario clinics. When slide images are attached, align title and body with what is shown. Return valid JSON only.",
+            "You design substantive dermatology slides for Ontario clinics. Avoid repetitive bullet templates. Use varied structure and depth. When slide images are attached, align content with visuals. Return valid JSON only.",
         },
         {
           role: "user",
@@ -218,15 +249,28 @@ Return JSON only:
   const raw = data.choices[0]?.message.content?.trim();
   if (!raw) throw new Error("Empty response from OpenAI.");
 
-  const parsed = JSON.parse(raw) as {
-    title?: unknown;
-    body?: unknown;
-    bullets?: unknown;
-  };
-  return {
+  const parsed = JSON.parse(raw) as Record<string, unknown>;
+
+  return normalizeGeneratedSlide({
     title: normalizeSlideField(parsed.title) || "Untitled",
-    body: normalizeSlideField(parsed.body ?? parsed.bullets),
-  };
+    body: normalizeSlideField(parsed.body) || undefined,
+    leftBody: normalizeSlideField(parsed.leftBody) || undefined,
+    rightBody: normalizeSlideField(parsed.rightBody) || undefined,
+    notes: normalizeSlideField(parsed.notes) || undefined,
+    layout: typeof parsed.layout === "string" ? parsed.layout : undefined,
+    background: typeof parsed.background === "string" ? parsed.background : undefined,
+    imagePrompt: typeof parsed.imagePrompt === "string" ? parsed.imagePrompt : undefined,
+    titleFontStyle: typeof parsed.titleFontStyle === "string" ? parsed.titleFontStyle : undefined,
+    bodyFontStyle: typeof parsed.bodyFontStyle === "string" ? parsed.bodyFontStyle : undefined,
+    titleFontSize: typeof parsed.titleFontSize === "number" ? parsed.titleFontSize : undefined,
+    bodyFontSize: typeof parsed.bodyFontSize === "number" ? parsed.bodyFontSize : undefined,
+    titleColor: typeof parsed.titleColor === "string" ? parsed.titleColor : undefined,
+    bodyColor: typeof parsed.bodyColor === "string" ? parsed.bodyColor : undefined,
+    titleAlign:
+      parsed.titleAlign === "left" || parsed.titleAlign === "center" || parsed.titleAlign === "right"
+        ? parsed.titleAlign
+        : undefined,
+  } as Partial<GeneratedDeckSlide>);
 }
 
 export async function autofillDeck(options: {
@@ -246,25 +290,29 @@ export async function autofillDeck(options: {
     ? `\n\n--- Existing deck context ---\n${options.slideContext.trim()}\n--- End context ---`
     : "";
 
-  const userPrompt = `Create a complete dermatology presentation deck with varied visual design.
+  const userPrompt = `Create a complete dermatology presentation deck with varied visual design and substantive content.
 
 Topic: ${options.prompt.trim()}
 Number of slides: ${count}
 ${options.deckTitle?.trim() ? `Suggested deck title: ${options.deckTitle.trim()}` : ""}
 ${contextBlock}
 
+${SLIDE_CONTENT_STYLE_GUIDE}
+
 Design rules:
 - First slide: layout "title" (large centered title + optional subtitle in body). Use titleFontSize 48-56, titleFontStyle "playfair" or "merriweather".
-- Last slide: layout "title" or "bullets" for key takeaways.
-- Vary layouts across slides: use at least 3 different layouts from the list below.
+- Last slide: layout "title" or "bullets" for key takeaways (5–7 takeaway bullets, not 3).
+- Vary layouts across slides: use at least 4 different layouts from the list below.
 - Use at least 2 slides with layout "image-right" or "image-left" and a detailed imagePrompt (clinical dermatology illustration).
 - Use 1 slide with layout "image-hero" and backgroundImagePrompt (wide subtle medical background, no text in image).
-- Use "two-column" for comparing topics (provide leftBody and rightBody with • bullets).
-- Use "bullets" for list-heavy content slides.
+- Use "two-column" for comparing topics (leftBody and rightBody with 4–6 • bullets each).
+- Use "title-body" for narrative slides mixing paragraphs and bullets; use "bullets" with ## section breaks for list-heavy slides.
+- Alternate content density: some slides narrative-heavy, some sectioned lists, some comparison columns.
 - Vary titleFontStyle and bodyFontStyle across slides (choose from: ${fontIds}). Do not use the same font on every slide.
 - Vary titleFontSize (28-52) and bodyFontSize (18-24) appropriately per layout.
 - Use titleColor and bodyColor hex values for contrast (e.g. #111111, #1e1b4b, #374151). On image-hero use #ffffff / #f1f5f9.
 - Set background to a soft hex color on non-hero slides (#ffffff, #f8fafc, #eef2ff, #fef3c7, #ecfdf5) — vary across slides.
+- Speaker notes should add detail beyond what's on the slide (3–4 sentences).
 
 Return JSON only:
 {
@@ -272,10 +320,10 @@ Return JSON only:
   "slides": [
     {
       "title": "slide title",
-      "body": "body text with • bullets, **bold** key terms",
-      "leftBody": "only for two-column",
-      "rightBody": "only for two-column",
-      "notes": "2-3 sentence speaker notes",
+      "body": "rich body — ## sections, paragraphs, 5–9 bullets; NOT label-colon fragments",
+      "leftBody": "only for two-column — 4–6 bullets",
+      "rightBody": "only for two-column — 4–6 bullets",
+      "notes": "3–4 sentence speaker notes with extra clinical detail",
       "layout": "title | title-body | bullets | two-column | image-right | image-left | image-hero",
       "background": "#hex color",
       "backgroundImagePrompt": "only for image-hero — describe subtle 16:9 dermatology background",
@@ -305,7 +353,7 @@ Return JSON only:
         {
           role: "system",
           content:
-            "You are a presentation designer for Ontario dermatology clinics. Create visually varied decks with distinct layouts, typography, and image prompts. Use Canadian spelling. When existing slide images are attached, build on those visuals. Return valid JSON only.",
+            "You are a presentation designer for Ontario dermatology clinics. Create visually varied decks with substantive, non-repetitive copy — never default to three 'Label: sentence' bullets. Use Canadian spelling. When existing slide images are attached, build on those visuals. Return valid JSON only.",
         },
         {
           role: "user",

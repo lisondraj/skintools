@@ -7,6 +7,7 @@ import type {
   GenerateImageRes,
   RealtimeSessionReq,
   RealtimeSessionRes,
+  SlideLayoutRes,
 } from "./types";
 
 async function parseJson<T>(response: Response): Promise<T & { error?: string }> {
@@ -27,13 +28,13 @@ export async function autofillText(req: AutofillReq): Promise<string> {
   return data.text;
 }
 
-export async function autofillSlide(req: Omit<AutofillReq, "mode">): Promise<{ title: string; body: string }> {
+export async function autofillSlide(req: Omit<AutofillReq, "mode">): Promise<SlideLayoutRes> {
   const response = await fetch("/api/modules/autofill", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ...req, mode: "slide" }),
   });
-  return parseJson<{ title: string; body: string }>(response);
+  return parseJson<SlideLayoutRes>(response);
 }
 
 export async function generateSlideImage(req: GenerateImageReq): Promise<string> {

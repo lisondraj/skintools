@@ -16,7 +16,6 @@ import {
   createTextElement,
   duplicateElement,
   shiftElementZ,
-  slideElementsFromLayout,
 } from "@/lib/modules/elements";
 import {
   addSlide,
@@ -235,15 +234,20 @@ export default function ModulesPage() {
     setError("");
     try {
       const ctx = getSlideContext();
-      const layout = await autofillSlide({
+      const result = await autofillSlide({
         prompt,
         deckTitle: deck.title,
         slideContext: ctx.text,
         contextImages: ctx.images,
       });
-      const { elements } = slideElementsFromLayout(layout);
-      updateElements(elements);
-      setSelectedElementId(elements[0]?.id ?? null);
+      const next = updateSlide(activeSlide.id, (slide) => ({
+        ...slide,
+        elements: result.elements,
+        background: result.background,
+        notes: result.notes ?? slide.notes,
+      }));
+      if (next) setDeck(next);
+      setSelectedElementId(result.elements[0]?.id ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Slide generation failed.");
     } finally {

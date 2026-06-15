@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
+import { buildSlideFromGenerated } from "@/lib/modules/deck-builder";
+import { generateAssetsForSlide } from "@/lib/modules/deck-images";
 import { autofillSlideLayout, autofillText } from "@/lib/modules/openai";
 import type { AutofillReq, AutofillRes, SlideLayoutRes } from "@/lib/modules/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 const TEXT_MODES_REQUIRING_EXISTING = new Set([
   "rewrite",
@@ -33,13 +35,19 @@ export async function POST(request: Request) {
           { status: 400 },
         );
       }
-      const layout = await autofillSlideLayout({
+      const spec = await autofillSlideLayout({
         prompt: body.prompt,
         deckTitle: body.deckTitle,
         slideContext: body.slideContext,
         contextImages: body.contextImages,
       });
-      return NextResponse.json(layout satisfies SlideLayoutRes);
+      const assets = await generateAssetsForSlide(spec);
+      const built = buildSlideFromGenerated(spec, assets);
+      return NextResponse.json({
+        elements: built.elements,
+        background: built.background,
+        notes: built.notes,
+      } satisfies SlideLayoutRes);
     }
 
     if (body.mode === "notes") {
