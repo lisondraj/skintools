@@ -190,25 +190,30 @@ ${SLIDE_CONTENT_STYLE_GUIDE}
 ${SLIDE_LAYOUT_PICK_GUIDE}
 
 Typography rules:
-- Font is ALWAYS Inter — do NOT choose a font, leave titleFontStyle/bodyFontStyle as "inter".
+- Font is ALWAYS Inter — set titleFontStyle/bodyFontStyle to "inter".
 - titleFontSize: 30–40. bodyFontSize: 18–22.
-- background: a clean soft hex only (#ffffff, #f8fafc, #eef2ff, #fef3c7, #ecfdf5, #fff7ed).
+- titleColor and bodyColor are ALWAYS "#111111" and "#374151" (black text — backgrounds are light).
 
-Content length rules (CRITICAL — text boxes must not overflow):
-- body for title-body/bullets: max 600 characters. Use 4–6 bullets or 2–3 short paragraphs.
-- leftBody / rightBody for two-column: max 300 characters each (3–5 bullets).
-- body for image-right/image-left: max 350 characters (3–4 short bullets or 2 sentences).
+Background rules:
+- backgroundStyle "white" — plain #ffffff.
+- backgroundStyle "solid" — soft hex (#f8fafc, #eef2ff, #fef3c7, #ecfdf5, #fff7ed).
+- backgroundStyle "ai" — GPT generates an abstract pale background image. Provide backgroundImagePrompt: a brief description of the abstract visual theme that matches this slide (e.g. "soft watercolor wash in warm coral tones", "subtle geometric skin-cell pattern in pale blue"). The background will be very light so dark text stays readable.
+
+Image rules:
+- imagePrompt for image-right/image-left: describe a clean clinical illustration with absolutely NO text, NO labels, NO annotations, NO watermarks in the image itself.
 
 Return JSON only:
 {
   "title": "slide title",
-  "body": "body text — keep within the character limits above",
+  "body": "rich body text with appropriate depth",
   "leftBody": "only if layout is two-column",
   "rightBody": "only if layout is two-column",
   "notes": "3–4 sentence speaker notes with extra detail not on the slide",
   "layout": "title-body | bullets | two-column | image-right | image-left",
-  "background": "#hex",
-  "imagePrompt": "if image-right/image-left — clinical illustration description, no text in image",
+  "backgroundStyle": "white | solid | ai",
+  "background": "#hex (fallback if ai generation fails)",
+  "backgroundImagePrompt": "only for ai backgrounds — brief abstract theme description",
+  "imagePrompt": "if image-right/image-left — clinical illustration, no text in image",
   "titleFontStyle": "inter",
   "bodyFontStyle": "inter",
   "titleFontSize": 34,
@@ -263,7 +268,13 @@ Return JSON only:
     rightBody: normalizeSlideField(parsed.rightBody) || undefined,
     notes: normalizeSlideField(parsed.notes) || undefined,
     layout: typeof parsed.layout === "string" ? parsed.layout : undefined,
+    backgroundStyle:
+      parsed.backgroundStyle === "white" || parsed.backgroundStyle === "solid" || parsed.backgroundStyle === "ai"
+        ? parsed.backgroundStyle
+        : undefined,
     background: typeof parsed.background === "string" ? parsed.background : undefined,
+    backgroundImagePrompt:
+      typeof parsed.backgroundImagePrompt === "string" ? parsed.backgroundImagePrompt : undefined,
     imagePrompt: typeof parsed.imagePrompt === "string" ? parsed.imagePrompt : undefined,
     titleFontStyle: typeof parsed.titleFontStyle === "string" ? parsed.titleFontStyle : undefined,
     bodyFontStyle: typeof parsed.bodyFontStyle === "string" ? parsed.bodyFontStyle : undefined,
@@ -303,33 +314,25 @@ ${contextBlock}
 
 ${SLIDE_CONTENT_STYLE_GUIDE}
 
-Typography rules (apply to every slide):
-- Font is ALWAYS Inter — set titleFontStyle and bodyFontStyle to "inter" for every slide.
-- titleFontSize: 30–44 (use 44–52 only for the title slide). bodyFontSize: 18–22.
+Typography rules (every slide):
+- Font is ALWAYS Inter — set titleFontStyle and bodyFontStyle to "inter".
+- titleFontSize: 30–44 (title slide: 48). bodyFontSize: 18–22.
+- titleColor is ALWAYS "#111111". bodyColor is ALWAYS "#374151". Dark text works on all backgrounds.
 
 Layout rules:
 - First slide: layout "title" (large centered title + short subtitle). titleFontSize 48.
 - Last slide: layout "bullets" for key takeaways.
-- Vary layouts: use at least 4 different types from the list below.
-- Use 1–2 slides with "image-right" or "image-left" with a detailed imagePrompt (no text in the illustration).
-- Use "two-column" for comparisons (leftBody and rightBody).
-- Use "title-body" for narrative/paragraph slides; "bullets" for list-heavy slides.
+- Vary layouts: use at least 4 different types.
+- Use 1–2 slides with "image-right" or "image-left" with a detailed imagePrompt.
+- Use "two-column" for comparisons; "title-body" for narrative; "bullets" for lists.
 
-Content length rules (CRITICAL — text boxes have fixed height; overflow is hidden):
-- body for title-body/bullets: max 550 characters. Use 4–6 bullets or 2–3 short paragraphs.
-- leftBody / rightBody for two-column: max 280 characters each (3–5 short bullets).
-- body for image-right/image-left: max 320 characters (3–4 bullets or 2 short sentences).
-- title slide body (subtitle): max 120 characters.
-- Prefer fewer, clearer bullets over cramming more text in.
-
-Background rules (backgroundStyle):
-- Use only "white" or "solid" — do NOT use "ai" backgrounds.
-- "white" — #ffffff. Good for dense text slides.
-- "solid" — a soft, tasteful hex (#f8fafc, #eef2ff, #fef3c7, #ecfdf5, #fff7ed, #f0fdf4).
-- Mix backgrounds across the deck for variety. Always use dark text (#111111, #374151).
+Background rules (backgroundStyle — vary across the deck):
+- "white" — plain #ffffff. Good for busy text slides.
+- "solid" — soft tasteful hex (#f8fafc, #eef2ff, #fef3c7, #ecfdf5, #fff7ed, #f0fdf4).
+- "ai" — an abstract, very-pale background image is generated. Provide backgroundImagePrompt: a short description of abstract visuals thematically matching the slide (e.g. "soft watercolor wash in warm coral tones echoing skin texture", "subtle pale-blue geometric cell pattern"). The generated image will be very light so black text remains readable. Use "ai" on 2–4 slides (title slide + key content slides). Do NOT use on image-right/image-left slides.
 
 Image rules:
-- imagePrompt for image-right/image-left: describe a clean clinical illustration with NO text, NO labels, NO watermarks. Real medical education style, white or transparent background preferred.
+- imagePrompt for image-right/image-left: describe a clinical illustration. The image must have ABSOLUTELY NO text, NO labels, NO annotations, NO watermarks, NO captions.
 
 Return JSON only:
 {
@@ -337,14 +340,15 @@ Return JSON only:
   "slides": [
     {
       "title": "slide title",
-      "body": "concise body — within character limits above",
-      "leftBody": "only for two-column — 3–5 short bullets",
-      "rightBody": "only for two-column — 3–5 short bullets",
-      "notes": "3–4 sentence speaker notes with clinical detail not on the slide",
+      "body": "rich body — ## sections, paragraphs, 5–9 bullets as appropriate",
+      "leftBody": "only for two-column",
+      "rightBody": "only for two-column",
+      "notes": "3–4 sentence speaker notes with extra clinical detail",
       "layout": "title | title-body | bullets | two-column | image-right | image-left | image-hero",
-      "backgroundStyle": "white | solid",
-      "background": "#hex",
-      "imagePrompt": "required for image-right/image-left — illustration, no text in image",
+      "backgroundStyle": "white | solid | ai",
+      "background": "#hex fallback if ai fails",
+      "backgroundImagePrompt": "only when backgroundStyle is ai — brief abstract theme",
+      "imagePrompt": "only for image-right/image-left — no text in image",
       "titleFontStyle": "inter",
       "bodyFontStyle": "inter",
       "titleFontSize": 34,

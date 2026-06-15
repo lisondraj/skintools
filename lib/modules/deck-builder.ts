@@ -57,13 +57,14 @@ function normalizeColor(value: unknown, fallback: string): string {
   return fallback;
 }
 
-// AI backgrounds are disabled — only white or solid color.
-function normalizeBackgroundStyle(_value: unknown): GeneratedSlideBackgroundStyle {
+function normalizeBackgroundStyle(value: unknown): GeneratedSlideBackgroundStyle {
+  if (value === "white" || value === "solid" || value === "ai") return value;
   return "solid";
 }
 
 export function normalizeGeneratedSlide(raw: Partial<GeneratedDeckSlide>): GeneratedDeckSlide {
   const layout = normalizeLayout(raw.layout);
+  const backgroundStyle = normalizeBackgroundStyle(raw.backgroundStyle);
 
   return {
     title: String(raw.title ?? "Untitled").trim() || "Untitled",
@@ -72,10 +73,11 @@ export function normalizeGeneratedSlide(raw: Partial<GeneratedDeckSlide>): Gener
     rightBody: raw.rightBody != null ? String(raw.rightBody).trim() : undefined,
     notes: raw.notes != null ? String(raw.notes).trim() : undefined,
     layout,
-    backgroundStyle: normalizeBackgroundStyle(raw.backgroundStyle),
-    // Accept AI hex suggestion; fall back to clean off-whites.
+    backgroundStyle,
+    // Solid/fallback background hex.
     background: normalizeColor(raw.background, "#f8fafc"),
-    backgroundImagePrompt: undefined,   // AI backgrounds disabled
+    backgroundImagePrompt:
+      typeof raw.backgroundImagePrompt === "string" ? raw.backgroundImagePrompt.trim() : undefined,
     imagePrompt: typeof raw.imagePrompt === "string" ? raw.imagePrompt.trim() : undefined,
     // Lock ALL fonts to Inter.
     titleFontStyle: FONT,
@@ -88,8 +90,10 @@ export function normalizeGeneratedSlide(raw: Partial<GeneratedDeckSlide>): Gener
       raw.bodyFontSize,
       layout === "title" ? 22 : layout === "two-column" ? 18 : 20,
     ),
-    titleColor: normalizeColor(raw.titleColor, "#111111"),
-    bodyColor: normalizeColor(raw.bodyColor, "#374151"),
+    // Always use black text — AI backgrounds are generated as very light/pale
+    // so dark text is always legible.
+    titleColor: "#111111",
+    bodyColor: "#374151",
     titleAlign: normalizeAlign(raw.titleAlign, layout === "title" ? "center" : "left"),
   };
 }
@@ -451,8 +455,12 @@ export function buildSlideFromGenerated(
   const slide = createEmptySlide("content");
   slide.notes = s.notes;
 
-  // AI backgrounds are disabled — always use the solid colour.
-  slide.background = s.background ?? "#f8fafc";
+  // AI-generated background image takes priority; fall back to solid hex.
+  if (assets.backgroundImage) {
+    slide.background = assets.backgroundImage;
+  } else {
+    slide.background = s.background ?? "#f8fafc";
+  }
 
   switch (s.layout) {
     case "title":
