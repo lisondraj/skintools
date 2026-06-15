@@ -11,9 +11,10 @@ export type LoadingUpdate = {
 
 export const DECK_LOADING_PHASES: LoadingPhase[] = [
   { label: "Building slide deck", until: 0 },
-  { label: "Adding images", until: 38 },
-  { label: "Adjusting theme", until: 72 },
-  { label: "Finishing up", until: 90 },
+  { label: "Adding images", until: 32 },
+  { label: "Designing slide backgrounds", until: 58 },
+  { label: "Applying theme", until: 82 },
+  { label: "Finishing up", until: 92 },
 ];
 
 export const SLIDE_LOADING_PHASES: LoadingPhase[] = [

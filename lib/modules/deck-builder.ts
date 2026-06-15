@@ -3,6 +3,7 @@ import { createEmptySlide } from "./storage";
 import { createImageElement, createTextElement } from "./elements";
 import type {
   GeneratedDeckSlide,
+  GeneratedSlideBackgroundStyle,
   GeneratedSlideLayout,
   Slide,
   TextAlign,
@@ -51,8 +52,22 @@ function normalizeColor(value: unknown, fallback: string): string {
   return fallback;
 }
 
+function normalizeBackgroundStyle(
+  value: unknown,
+  layout: GeneratedSlideLayout,
+): GeneratedSlideBackgroundStyle {
+  if (value === "white" || value === "solid" || value === "ai") return value;
+  if (layout === "image-hero") return "ai";
+  return "solid";
+}
+
 export function normalizeGeneratedSlide(raw: Partial<GeneratedDeckSlide>): GeneratedDeckSlide {
   const layout = normalizeLayout(raw.layout);
+  const backgroundStyle = normalizeBackgroundStyle(raw.backgroundStyle, layout);
+  const hasAiBg =
+    backgroundStyle === "ai" ||
+    (layout === "image-hero" && typeof raw.backgroundImagePrompt === "string");
+
   return {
     title: String(raw.title ?? "Untitled").trim() || "Untitled",
     body: raw.body != null ? String(raw.body).trim() : undefined,
@@ -60,7 +75,11 @@ export function normalizeGeneratedSlide(raw: Partial<GeneratedDeckSlide>): Gener
     rightBody: raw.rightBody != null ? String(raw.rightBody).trim() : undefined,
     notes: raw.notes != null ? String(raw.notes).trim() : undefined,
     layout,
-    background: normalizeColor(raw.background, layout === "image-hero" ? "#0f172a" : "#ffffff"),
+    backgroundStyle,
+    background:
+      backgroundStyle === "white"
+        ? "#ffffff"
+        : normalizeColor(raw.background, hasAiBg ? "#0f172a" : "#ffffff"),
     backgroundImagePrompt:
       typeof raw.backgroundImagePrompt === "string" ? raw.backgroundImagePrompt.trim() : undefined,
     imagePrompt: typeof raw.imagePrompt === "string" ? raw.imagePrompt.trim() : undefined,
@@ -74,8 +93,14 @@ export function normalizeGeneratedSlide(raw: Partial<GeneratedDeckSlide>): Gener
       raw.bodyFontSize,
       layout === "title" ? 24 : layout === "two-column" ? 20 : 22,
     ),
-    titleColor: normalizeColor(raw.titleColor, layout === "image-hero" ? "#ffffff" : "#111111"),
-    bodyColor: normalizeColor(raw.bodyColor, layout === "image-hero" ? "#f1f5f9" : "#374151"),
+    titleColor: normalizeColor(
+      raw.titleColor,
+      hasAiBg || layout === "image-hero" ? "#ffffff" : "#111111",
+    ),
+    bodyColor: normalizeColor(
+      raw.bodyColor,
+      hasAiBg || layout === "image-hero" ? "#f1f5f9" : "#374151",
+    ),
     titleAlign: normalizeAlign(raw.titleAlign, layout === "title" ? "center" : "left"),
   };
 }
@@ -348,7 +373,14 @@ export function buildSlideFromGenerated(
   const spec = normalizeGeneratedSlide(raw);
   const slide = createEmptySlide("content");
   slide.notes = spec.notes;
-  slide.background = assets.backgroundImage ?? spec.background ?? "#ffffff";
+
+  if (assets.backgroundImage) {
+    slide.background = assets.backgroundImage;
+  } else if (spec.backgroundStyle === "white") {
+    slide.background = "#ffffff";
+  } else {
+    slide.background = spec.background ?? "#ffffff";
+  }
 
   switch (spec.layout) {
     case "title":

@@ -164,6 +164,8 @@ export type GeneratedSlideLayout =
   | "image-left"
   | "image-hero";
 
+export type GeneratedSlideBackgroundStyle = "white" | "solid" | "ai";
+
 export interface GeneratedDeckSlide {
   title: string;
   body?: string;
@@ -171,7 +173,10 @@ export interface GeneratedDeckSlide {
   rightBody?: string;
   notes?: string;
   layout: GeneratedSlideLayout;
+  /** white = #ffffff; solid = soft hex in background; ai = GPT Image 2 full-slide background. */
+  backgroundStyle?: GeneratedSlideBackgroundStyle;
   background?: string;
+  /** Describe AI background visuals — must relate to slide title/body when backgroundStyle is ai. */
   backgroundImagePrompt?: string;
   imagePrompt?: string;
   titleFontStyle?: string;

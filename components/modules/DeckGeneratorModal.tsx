@@ -34,8 +34,8 @@ export function DeckGeneratorModal({ open, busy, loading, onClose, onGenerate }:
         </header>
 
         <p className="modules-modal__hint">
-          AI creates a full presentation with varied layouts, typography, speaker notes, and
-          generated clinical illustrations on image slides.
+          AI creates a full presentation with varied layouts, typography, speaker notes, contextual
+          GPT Image 2 backgrounds (white, solid colour, or AI-designed), and clinical illustrations.
         </p>
 
         {busy && loading && (

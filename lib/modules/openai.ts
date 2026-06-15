@@ -303,16 +303,22 @@ Design rules:
 - First slide: layout "title" (large centered title + optional subtitle in body). Use titleFontSize 48-56, titleFontStyle "playfair" or "merriweather".
 - Last slide: layout "title" or "bullets" for key takeaways (5–7 takeaway bullets, not 3).
 - Vary layouts across slides: use at least 4 different layouts from the list below.
-- Use at least 2 slides with layout "image-right" or "image-left" and a detailed imagePrompt (clinical dermatology illustration).
-- Use 1 slide with layout "image-hero" and backgroundImagePrompt (wide subtle medical background, no text in image).
+- Use at least 2 slides with layout "image-right" or "image-left" and a detailed imagePrompt (clinical illustration tied to that slide's title and body).
+- Use 1 slide with layout "image-hero" (dramatic full-bleed background with title overlay).
 - Use "two-column" for comparing topics (leftBody and rightBody with 4–6 • bullets each).
 - Use "title-body" for narrative slides mixing paragraphs and bullets; use "bullets" with ## section breaks for list-heavy slides.
 - Alternate content density: some slides narrative-heavy, some sectioned lists, some comparison columns.
 - Vary titleFontStyle and bodyFontStyle across slides (choose from: ${fontIds}). Do not use the same font on every slide.
 - Vary titleFontSize (28-52) and bodyFontSize (18-24) appropriately per layout.
-- Use titleColor and bodyColor hex values for contrast (e.g. #111111, #1e1b4b, #374151). On image-hero use #ffffff / #f1f5f9.
-- Set background to a soft hex color on non-hero slides (#ffffff, #f8fafc, #eef2ff, #fef3c7, #ecfdf5) — vary across slides.
 - Speaker notes should add detail beyond what's on the slide (3–4 sentences).
+
+Slide background design (backgroundStyle — vary across the deck):
+- "white" — clean #ffffff, no image. Good for dense text slides. Use dark titleColor/bodyColor (#111111, #374151).
+- "solid" — soft hex in background field (#f8fafc, #eef2ff, #fef3c7, #ecfdf5, #ffffff). No backgroundImagePrompt.
+- "ai" — GPT Image 2 generates a full 16:9 slide background. REQUIRED: backgroundImagePrompt describing visuals that match THIS slide's title and body (e.g. for a slide about melanoma ABCDE, prompt "soft abstract dermoscopy patterns and sun safety motifs"). Use light text (titleColor #ffffff or #f8fafc, bodyColor #e2e8f0) when the background may be darker.
+- Use backgroundStyle "ai" on 3–5 slides (title slide, image-hero, and 1–2 key content slides). Remaining slides: mix "white" and "solid".
+- Do NOT use ai backgrounds on every slide — alternate for readability and generation time.
+- imagePrompt and backgroundImagePrompt must reference specific content from that slide's title/body, not generic dermatology stock art.
 
 Return JSON only:
 {
@@ -325,9 +331,10 @@ Return JSON only:
       "rightBody": "only for two-column — 4–6 bullets",
       "notes": "3–4 sentence speaker notes with extra clinical detail",
       "layout": "title | title-body | bullets | two-column | image-right | image-left | image-hero",
-      "background": "#hex color",
-      "backgroundImagePrompt": "only for image-hero — describe subtle 16:9 dermatology background",
-      "imagePrompt": "only for image-right/image-left — describe clinical illustration to generate",
+      "backgroundStyle": "white | solid | ai",
+      "background": "#hex — used for solid/white; fallback tint if ai gen fails",
+      "backgroundImagePrompt": "required when backgroundStyle is ai — describe background visuals matching this slide's topic",
+      "imagePrompt": "required for image-right/image-left — illustration matching slide content",
       "titleFontStyle": "font id",
       "bodyFontStyle": "font id",
       "titleFontSize": 36,
@@ -353,7 +360,7 @@ Return JSON only:
         {
           role: "system",
           content:
-            "You are a presentation designer for Ontario dermatology clinics. Create visually varied decks with substantive, non-repetitive copy — never default to three 'Label: sentence' bullets. Use Canadian spelling. When existing slide images are attached, build on those visuals. Return valid JSON only.",
+            "You are a presentation designer for Ontario dermatology clinics. Create visually varied decks with substantive copy and intentional slide background design (white, solid colour, or AI-generated backgrounds tied to each slide's content). Use Canadian spelling. When existing slide images are attached, build on those visuals. Return valid JSON only.",
         },
         {
           role: "user",
@@ -388,6 +395,12 @@ Return JSON only:
       rightBody: normalizeSlideField(slide.rightBody) || undefined,
       notes: normalizeSlideField(slide.notes) || undefined,
       layout: typeof slide.layout === "string" ? slide.layout : undefined,
+      backgroundStyle:
+        slide.backgroundStyle === "white" ||
+        slide.backgroundStyle === "solid" ||
+        slide.backgroundStyle === "ai"
+          ? slide.backgroundStyle
+          : undefined,
       background: typeof slide.background === "string" ? slide.background : undefined,
       backgroundImagePrompt:
         typeof slide.backgroundImagePrompt === "string" ? slide.backgroundImagePrompt : undefined,
