@@ -152,15 +152,37 @@ export interface GenerateDeckReq {
   contextImages?: SlideContextImage[];
 }
 
+export type GeneratedSlideLayout =
+  | "title"
+  | "title-body"
+  | "bullets"
+  | "two-column"
+  | "image-right"
+  | "image-left"
+  | "image-hero";
+
 export interface GeneratedDeckSlide {
   title: string;
-  body: string;
+  body?: string;
+  leftBody?: string;
+  rightBody?: string;
   notes?: string;
+  layout: GeneratedSlideLayout;
+  background?: string;
+  backgroundImagePrompt?: string;
+  imagePrompt?: string;
+  titleFontStyle?: string;
+  bodyFontStyle?: string;
+  titleFontSize?: number;
+  bodyFontSize?: number;
+  titleColor?: string;
+  bodyColor?: string;
+  titleAlign?: TextAlign;
 }
 
 export interface GenerateDeckRes {
   deckTitle: string;
-  slides: GeneratedDeckSlide[];
+  slides: Slide[];
 }
 
 export interface RealtimeSessionReq {

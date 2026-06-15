@@ -1,6 +1,8 @@
 import { getOpenAiKey } from "@/lib/skinlog/env";
+import { normalizeGeneratedSlide } from "./deck-builder";
+import { SLIDE_FONT_STYLES } from "./fonts";
 import { buildVisionUserContent } from "./openai-vision";
-import type { AutofillMode, SlideContextImage } from "./types";
+import type { AutofillMode, GeneratedDeckSlide, SlideContextImage } from "./types";
 
 type AutofillOptions = {
   prompt?: string;
@@ -233,22 +235,36 @@ export async function autofillDeck(options: {
   deckTitle?: string;
   slideContext?: string;
   contextImages?: SlideContextImage[];
-}): Promise<{ deckTitle: string; slides: Array<{ title: string; body: string; notes?: string }> }> {
+}): Promise<{ deckTitle: string; slides: GeneratedDeckSlide[] }> {
   const key = getOpenAiKey();
   if (!key) throw new Error("OpenAI API key not configured.");
 
   const count = Math.min(Math.max(options.slideCount ?? 6, 3), 12);
+  const fontIds = SLIDE_FONT_STYLES.map((f) => f.id).join(", ");
 
   const contextBlock = options.slideContext?.trim()
     ? `\n\n--- Existing deck context ---\n${options.slideContext.trim()}\n--- End context ---`
     : "";
 
-  const userPrompt = `Create a complete dermatology presentation deck.
+  const userPrompt = `Create a complete dermatology presentation deck with varied visual design.
 
 Topic: ${options.prompt.trim()}
 Number of slides: ${count}
 ${options.deckTitle?.trim() ? `Suggested deck title: ${options.deckTitle.trim()}` : ""}
 ${contextBlock}
+
+Design rules:
+- First slide: layout "title" (large centered title + optional subtitle in body). Use titleFontSize 48-56, titleFontStyle "playfair" or "merriweather".
+- Last slide: layout "title" or "bullets" for key takeaways.
+- Vary layouts across slides: use at least 3 different layouts from the list below.
+- Use at least 2 slides with layout "image-right" or "image-left" and a detailed imagePrompt (clinical dermatology illustration).
+- Use 1 slide with layout "image-hero" and backgroundImagePrompt (wide subtle medical background, no text in image).
+- Use "two-column" for comparing topics (provide leftBody and rightBody with • bullets).
+- Use "bullets" for list-heavy content slides.
+- Vary titleFontStyle and bodyFontStyle across slides (choose from: ${fontIds}). Do not use the same font on every slide.
+- Vary titleFontSize (28-52) and bodyFontSize (18-24) appropriately per layout.
+- Use titleColor and bodyColor hex values for contrast (e.g. #111111, #1e1b4b, #374151). On image-hero use #ffffff / #f1f5f9.
+- Set background to a soft hex color on non-hero slides (#ffffff, #f8fafc, #eef2ff, #fef3c7, #ecfdf5) — vary across slides.
 
 Return JSON only:
 {
@@ -256,13 +272,24 @@ Return JSON only:
   "slides": [
     {
       "title": "slide title",
-      "body": "slide body with • bullets, **bold** key terms, blank lines between groups",
-      "notes": "2-3 sentence speaker notes"
+      "body": "body text with • bullets, **bold** key terms",
+      "leftBody": "only for two-column",
+      "rightBody": "only for two-column",
+      "notes": "2-3 sentence speaker notes",
+      "layout": "title | title-body | bullets | two-column | image-right | image-left | image-hero",
+      "background": "#hex color",
+      "backgroundImagePrompt": "only for image-hero — describe subtle 16:9 dermatology background",
+      "imagePrompt": "only for image-right/image-left — describe clinical illustration to generate",
+      "titleFontStyle": "font id",
+      "bodyFontStyle": "font id",
+      "titleFontSize": 36,
+      "bodyFontSize": 22,
+      "titleColor": "#111111",
+      "bodyColor": "#374151",
+      "titleAlign": "left | center | right"
     }
   ]
-}
-
-Include a title slide first, content slides in logical order, and a summary or key takeaways slide last.`;
+}`;
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -272,13 +299,13 @@ Include a title slide first, content slides in logical order, and a summary or k
     },
     body: JSON.stringify({
       model: "gpt-4o",
-      temperature: 0.7,
+      temperature: 0.75,
       response_format: { type: "json_object" },
       messages: [
         {
           role: "system",
           content:
-            "You write clear dermatology presentation decks for Ontario clinics. Use Canadian spelling. When existing slide images are attached, reference or build on those visuals. Format slide bodies with • bullets and **bold** emphasis.",
+            "You are a presentation designer for Ontario dermatology clinics. Create visually varied decks with distinct layouts, typography, and image prompts. Use Canadian spelling. When existing slide images are attached, build on those visuals. Return valid JSON only.",
         },
         {
           role: "user",
@@ -302,14 +329,33 @@ Include a title slide first, content slides in logical order, and a summary or k
 
   const parsed = JSON.parse(raw) as {
     deckTitle?: unknown;
-    slides?: Array<{ title?: unknown; body?: unknown; notes?: unknown }>;
+    slides?: Array<Record<string, unknown>>;
   };
 
-  const slides = (parsed.slides ?? []).map((slide) => ({
-    title: normalizeSlideField(slide.title) || "Untitled",
-    body: normalizeSlideField(slide.body),
-    notes: normalizeSlideField(slide.notes) || undefined,
-  }));
+  const slides = (parsed.slides ?? []).map((slide) =>
+    normalizeGeneratedSlide({
+      title: normalizeSlideField(slide.title) || "Untitled",
+      body: normalizeSlideField(slide.body) || undefined,
+      leftBody: normalizeSlideField(slide.leftBody) || undefined,
+      rightBody: normalizeSlideField(slide.rightBody) || undefined,
+      notes: normalizeSlideField(slide.notes) || undefined,
+      layout: typeof slide.layout === "string" ? slide.layout : undefined,
+      background: typeof slide.background === "string" ? slide.background : undefined,
+      backgroundImagePrompt:
+        typeof slide.backgroundImagePrompt === "string" ? slide.backgroundImagePrompt : undefined,
+      imagePrompt: typeof slide.imagePrompt === "string" ? slide.imagePrompt : undefined,
+      titleFontStyle: typeof slide.titleFontStyle === "string" ? slide.titleFontStyle : undefined,
+      bodyFontStyle: typeof slide.bodyFontStyle === "string" ? slide.bodyFontStyle : undefined,
+      titleFontSize: typeof slide.titleFontSize === "number" ? slide.titleFontSize : undefined,
+      bodyFontSize: typeof slide.bodyFontSize === "number" ? slide.bodyFontSize : undefined,
+      titleColor: typeof slide.titleColor === "string" ? slide.titleColor : undefined,
+      bodyColor: typeof slide.bodyColor === "string" ? slide.bodyColor : undefined,
+      titleAlign:
+        slide.titleAlign === "left" || slide.titleAlign === "center" || slide.titleAlign === "right"
+          ? slide.titleAlign
+          : undefined,
+    } as Partial<GeneratedDeckSlide>),
+  );
 
   if (slides.length === 0) {
     throw new Error("No slides returned from AI.");

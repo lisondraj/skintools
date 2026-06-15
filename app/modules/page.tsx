@@ -20,7 +20,6 @@ import {
 } from "@/lib/modules/elements";
 import {
   addSlide,
-  createEmptySlide,
   createNewDeck,
   deleteSlide,
   duplicateSlide,
@@ -39,7 +38,7 @@ import {
 import { buildSlideTemplate, type SlideTemplateId } from "@/lib/modules/templates";
 import { buildDeckAIContext, buildSlideAIContext } from "@/lib/modules/context";
 import { SHAPE_OPTIONS } from "@/lib/modules/shapes";
-import type { AutofillMode, Deck, ShapeKind, Slide, SlideElement } from "@/lib/modules/types";
+import type { AutofillMode, Deck, ShapeKind, SlideElement } from "@/lib/modules/types";
 
 export default function ModulesPage() {
   const [deck, setDeck] = useState<Deck | null>(null);
@@ -266,19 +265,10 @@ export default function ModulesPage() {
         contextImages: deckCtx.images,
       });
 
-      const slides: Slide[] = result.slides.map((layout) => {
-        const { elements, notes } = slideElementsFromLayout(layout, layout.notes);
-        return {
-          ...createEmptySlide("content"),
-          elements,
-          notes: notes ?? layout.notes,
-        };
-      });
-
       const next: Deck = {
         ...deck,
         title: result.deckTitle,
-        slides,
+        slides: result.slides,
         updatedAt: Date.now(),
       };
       saveDeck(next);

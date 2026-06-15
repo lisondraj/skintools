@@ -27,7 +27,8 @@ export function DeckGeneratorModal({ open, busy, onClose, onGenerate }: Props) {
         </header>
 
         <p className="modules-modal__hint">
-          AI creates a full presentation with title slides, formatted bullet content, and speaker notes.
+          AI creates a full presentation with varied layouts, typography, speaker notes, and
+          generated clinical illustrations on image slides.
         </p>
 
         <label className="modules-field">
@@ -61,7 +62,7 @@ export function DeckGeneratorModal({ open, busy, onClose, onGenerate }: Props) {
             setPrompt("");
           }}
         >
-          {busy ? "Generating deck…" : "Generate deck"}
+          {busy ? "Generating deck & images…" : "Generate deck"}
         </button>
       </div>
     </div>

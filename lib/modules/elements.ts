@@ -1,5 +1,5 @@
 import { DEFAULT_SHAPE } from "./shapes";
-import type { ShapeKind, ShapeElement, SlideElement, TextElement } from "./types";
+import type { ImageElement, ShapeKind, ShapeElement, SlideElement, TextElement } from "./types";
 import { MODULES_STAGE_H, MODULES_STAGE_W } from "@/lib/modules/types";
 import { DEFAULT_FONT_STYLE } from "@/lib/modules/fonts";
 
@@ -26,7 +26,11 @@ export function createTextElement(
   };
 }
 
-export function createImageElement(src: string, z = 1) {
+export function createImageElement(
+  src: string,
+  z = 1,
+  overrides?: Partial<Omit<ImageElement, "kind" | "id" | "src" | "z">>,
+) {
   return {
     kind: "image" as const,
     id: crypto.randomUUID(),
@@ -36,6 +40,7 @@ export function createImageElement(src: string, z = 1) {
     h: 240,
     z,
     src,
+    ...overrides,
   };
 }
 
@@ -62,7 +67,7 @@ export function createShapeElement(
 }
 
 export function slideElementsFromLayout(
-  layout: { title: string; body: string },
+  layout: { title: string; body: string; notes?: string },
   notes?: string,
 ): { elements: SlideElement[]; notes?: string } {
   const title = createTextElement(layout.title, 1, {
@@ -81,7 +86,7 @@ export function slideElementsFromLayout(
     fontSize: 22,
     fontWeight: 400,
   });
-  return { elements: [title, body], notes };
+  return { elements: [title, body], notes: notes ?? layout.notes };
 }
 
 export function clampElement(el: SlideElement): SlideElement {
