@@ -29,6 +29,11 @@ const TOOLS = [
     href: "/vsp",
     meta: "Voice encounter practice + transcript",
   },
+  {
+    name: "Live Translate",
+    href: "/translate",
+    meta: "Real-time speech translation",
+  },
 ] as const;
 
 const SPACES = [
