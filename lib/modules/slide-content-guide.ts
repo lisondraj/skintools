@@ -30,12 +30,13 @@ Slide backdrop (modern, clean — no preset colours):
 - backgroundStyle "solid" — a single flat backdrop. Do NOT specify hex colours; the app applies a neutral default.
 - backgroundStyle "ai" — GPT Image 2 generates a full-slide background. Provide backgroundImagePrompt: a brief modern visual theme tied to THIS slide's title and body (abstract, editorial, or subtle clinical motif — not stock-photo busy).
 - Prefer "ai" on title slides and 2–4 key content slides for a polished deck. Use "solid" on dense text slides.
-- Do NOT combine backgroundStyle "ai" with imagePrompt on the same slide.
+- backgroundStyle "ai" and imagePrompt CAN be used together on the same slide — the backdrop is full-bleed; the inline vector sits on top as a canvas element.
 - Design for dark text (#111111) remaining readable — avoid extremely dark or cluttered centre areas.`;
 
 export const SLIDE_INLINE_IMAGE_GUIDE = `
-Inline illustration vectors (canvas image elements — separate from slide backdrops):
+Inline illustration vectors (canvas image elements — layered above slide backdrops):
 - Use layout "image-right" or "image-left" when a clinical illustration is central to the slide. Always include imagePrompt.
+- Inline vectors work alongside backgroundStyle "ai" — use both when a polished backdrop plus a focal illustration strengthens the slide.
 - On "title-body" or "bullets" slides, you MAY add an optional imagePrompt for a smaller accent illustration.
 - imagePrompt is critical: describe WHAT to illustrate using 2–4 specific terms pulled from the slide title and body you wrote (e.g. if the slide discusses UV filters and SPF, the imagePrompt should mention broad-spectrum sunscreen application — not generic "dermatology image").
 - The illustration must visually support the exact slide copy — same condition, anatomy, or counselling point.

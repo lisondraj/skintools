@@ -236,7 +236,7 @@ Return JSON only:
         {
           role: "system",
           content:
-            "You design modern, substantive dermatology slides for Ontario clinics. Avoid repetitive bullet templates. Use varied structure and depth. Inline illustration vectors (image-right/image-left or imagePrompt) must visually match the specific slide copy you write. AI backdrops are separate full-slide backgrounds. When slide/deck context is provided, align with adjacent slides and the presentation theme. Return valid JSON only.",
+            "You design modern, substantive dermatology slides for Ontario clinics. Avoid repetitive bullet templates. Use varied structure and depth. Inline illustration vectors (image-right/image-left or imagePrompt) must visually match the specific slide copy you write. AI backdrops (backgroundStyle ai) are full-slide backgrounds that can coexist with inline vectors on the same slide. When slide/deck context is provided, align with adjacent slides and the presentation theme. Return valid JSON only.",
         },
         {
           role: "user",
@@ -372,7 +372,7 @@ Return JSON only:
         {
           role: "system",
           content:
-            "You are a modern presentation designer for Ontario dermatology clinics. Create visually varied decks with substantive copy. Inline illustration vectors must match each slide's specific content via imagePrompt. AI backdrops (backgroundStyle ai) are full-slide backgrounds separate from inline images. Do not suggest hex background colours. Use Canadian spelling. When existing slide images are attached, build on those visuals. Return valid JSON only.",
+            "You are a modern presentation designer for Ontario dermatology clinics. Create visually varied decks with substantive copy. Inline illustration vectors must match each slide's specific content via imagePrompt. AI backdrops (backgroundStyle ai) are full-slide backgrounds that can coexist with inline vectors on the same slide. Do not suggest hex background colours. Use Canadian spelling. When existing slide images are attached, build on those visuals. Return valid JSON only.",
         },
         {
           role: "user",
