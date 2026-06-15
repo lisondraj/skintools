@@ -1,4 +1,5 @@
-import type { SlideElement, TextElement } from "@/lib/modules/types";
+import { DEFAULT_SHAPE } from "./shapes";
+import type { ShapeKind, ShapeElement, SlideElement, TextElement } from "./types";
 import { MODULES_STAGE_H, MODULES_STAGE_W } from "@/lib/modules/types";
 import { DEFAULT_FONT_STYLE } from "@/lib/modules/fonts";
 
@@ -36,6 +37,51 @@ export function createImageElement(src: string, z = 1) {
     z,
     src,
   };
+}
+
+export function createShapeElement(
+  shape: ShapeKind = DEFAULT_SHAPE,
+  z = 1,
+  overrides?: Partial<Omit<ShapeElement, "kind" | "id" | "shape" | "z">>,
+): ShapeElement {
+  return {
+    kind: "shape",
+    id: crypto.randomUUID(),
+    x: 120,
+    y: 120,
+    w: 200,
+    h: 120,
+    z,
+    shape,
+    fill: "#eef2ff",
+    stroke: "#6366f1",
+    strokeWidth: 2,
+    opacity: 1,
+    ...overrides,
+  };
+}
+
+export function slideElementsFromLayout(
+  layout: { title: string; body: string },
+  notes?: string,
+): { elements: SlideElement[]; notes?: string } {
+  const title = createTextElement(layout.title, 1, {
+    x: 80,
+    y: 60,
+    w: MODULES_STAGE_W - 160,
+    h: 72,
+    fontSize: 36,
+    fontWeight: 600,
+  });
+  const body = createTextElement(layout.body, 2, {
+    x: 80,
+    y: 160,
+    w: MODULES_STAGE_W - 160,
+    h: 280,
+    fontSize: 22,
+    fontWeight: 400,
+  });
+  return { elements: [title, body], notes };
 }
 
 export function clampElement(el: SlideElement): SlideElement {

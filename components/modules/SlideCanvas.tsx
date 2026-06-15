@@ -10,6 +10,7 @@ import {
 import type { PatientSimConfig, Slide, SlideElement } from "@/lib/modules/types";
 import { MODULES_STAGE_H, MODULES_STAGE_W } from "@/lib/modules/types";
 import { clampElement, sortByZ } from "@/lib/modules/elements";
+import { slideBackgroundStyle } from "@/lib/modules/background";
 import { getFontFamily } from "@/lib/modules/fonts";
 import { SlideElementView } from "./SlideElementView";
 import { PatientSimConfigPanel } from "./PatientSimConfigPanel";
@@ -216,7 +217,7 @@ export function SlideCanvas({
         style={{
           width: MODULES_STAGE_W * scale,
           height: MODULES_STAGE_H * scale,
-          background: slide.background,
+          ...slideBackgroundStyle(slide.background),
         }}
         onPointerDown={handleCanvasPointerDown}
         onPointerMove={handlePointerMove}

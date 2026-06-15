@@ -34,7 +34,7 @@ function modeInstruction(mode: AutofillMode, hasSelection: boolean): string {
     case "clinical":
       return `Rewrite in professional clinical language suitable for dermatology trainees. ${scope}`;
     case "bullets":
-      return `Convert to scannable bullet points (use • prefix). ${scope}`;
+      return `Convert to scannable bullet points (use • prefix, one per line). ${scope}`;
     case "grammar":
       return `Fix grammar, spelling, and punctuation only — do not change meaning. ${scope}`;
     case "summarize":
@@ -87,7 +87,15 @@ User prompt: ${options.prompt?.trim() || "(none)"}
 ${selectionBlock}
 ${contextBlock}
 
-Return ONLY the final text — no quotes, no markdown, no labels.${hasSelection ? " Return the COMPLETE text box with the selection updated." : " Keep it suitable for a presentation text box."}`;
+Return ONLY the final text — no quotes, no labels.${hasSelection ? " Return the COMPLETE text box with the selection updated." : " Keep it suitable for a presentation text box."}
+
+Formatting (use when helpful):
+- **bold** for emphasis
+- *italic* for terms
+- # Heading line for section titles within the box
+- ## Subheading for subsections
+- • bullet lines (indent nested bullets with 2 leading spaces per level)
+- Blank lines for paragraph breaks`;
 }
 
 export async function autofillText(
@@ -164,7 +172,7 @@ Topic/prompt: ${options.prompt.trim()}
 ${contextBlock}
 
 Return JSON only:
-{"title":"short slide title","body":"2-4 bullet points or short paragraphs for the slide body"}`;
+{"title":"short slide title","body":"2-4 bullet points using • prefix, one per line. Use **bold** for key terms. Use blank lines between groups."}`;
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -207,5 +215,89 @@ Return JSON only:
   return {
     title: normalizeSlideField(parsed.title) || "Untitled",
     body: normalizeSlideField(parsed.body ?? parsed.bullets),
+  };
+}
+
+export async function autofillDeck(options: {
+  prompt: string;
+  slideCount?: number;
+  deckTitle?: string;
+}): Promise<{ deckTitle: string; slides: Array<{ title: string; body: string; notes?: string }> }> {
+  const key = getOpenAiKey();
+  if (!key) throw new Error("OpenAI API key not configured.");
+
+  const count = Math.min(Math.max(options.slideCount ?? 6, 3), 12);
+
+  const userPrompt = `Create a complete dermatology presentation deck.
+
+Topic: ${options.prompt.trim()}
+Number of slides: ${count}
+${options.deckTitle?.trim() ? `Suggested deck title: ${options.deckTitle.trim()}` : ""}
+
+Return JSON only:
+{
+  "deckTitle": "presentation title",
+  "slides": [
+    {
+      "title": "slide title",
+      "body": "slide body with • bullets, **bold** key terms, blank lines between groups",
+      "notes": "2-3 sentence speaker notes"
+    }
+  ]
+}
+
+Include a title slide first, content slides in logical order, and a summary or key takeaways slide last.`;
+
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${key}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-4o",
+      temperature: 0.7,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content:
+            "You write clear dermatology presentation decks for Ontario clinics. Use Canadian spelling. Format slide bodies with • bullets and **bold** emphasis.",
+        },
+        { role: "user", content: userPrompt },
+      ],
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`OpenAI request failed (${res.status}): ${err}`);
+  }
+
+  const data = (await res.json()) as {
+    choices: Array<{ message: { content: string } }>;
+  };
+
+  const raw = data.choices[0]?.message.content?.trim();
+  if (!raw) throw new Error("Empty response from OpenAI.");
+
+  const parsed = JSON.parse(raw) as {
+    deckTitle?: unknown;
+    slides?: Array<{ title?: unknown; body?: unknown; notes?: unknown }>;
+  };
+
+  const slides = (parsed.slides ?? []).map((slide) => ({
+    title: normalizeSlideField(slide.title) || "Untitled",
+    body: normalizeSlideField(slide.body),
+    notes: normalizeSlideField(slide.notes) || undefined,
+  }));
+
+  if (slides.length === 0) {
+    throw new Error("No slides returned from AI.");
+  }
+
+  return {
+    deckTitle: normalizeSlideField(parsed.deckTitle) || options.prompt.trim(),
+    slides,
   };
 }

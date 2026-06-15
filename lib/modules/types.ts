@@ -33,7 +33,32 @@ export interface ImageElement {
   src: string;
 }
 
-export type SlideElement = TextElement | ImageElement;
+export type ShapeKind =
+  | "rectangle"
+  | "ellipse"
+  | "triangle"
+  | "diamond"
+  | "star"
+  | "line"
+  | "arrow"
+  | "chevron";
+
+export interface ShapeElement {
+  kind: "shape";
+  id: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  z: number;
+  shape: ShapeKind;
+  fill: string;
+  stroke: string;
+  strokeWidth: number;
+  opacity: number;
+}
+
+export type SlideElement = TextElement | ImageElement | ShapeElement;
 
 export type PatientSimDifficulty = "easy" | "moderate" | "challenging";
 
@@ -96,6 +121,35 @@ export interface AutofillRes {
 export interface SlideLayoutRes {
   title: string;
   body: string;
+}
+
+export type SlideImagePurpose = "image" | "background" | "infographic";
+
+export interface GenerateImageReq {
+  prompt: string;
+  purpose?: SlideImagePurpose;
+  qualityMode?: "fast" | "quality";
+}
+
+export interface GenerateImageRes {
+  image: string;
+}
+
+export interface GenerateDeckReq {
+  prompt: string;
+  slideCount?: number;
+  deckTitle?: string;
+}
+
+export interface GeneratedDeckSlide {
+  title: string;
+  body: string;
+  notes?: string;
+}
+
+export interface GenerateDeckRes {
+  deckTitle: string;
+  slides: GeneratedDeckSlide[];
 }
 
 export interface RealtimeSessionReq {

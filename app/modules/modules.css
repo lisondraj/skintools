@@ -1081,6 +1081,158 @@
   border-top: 1px solid var(--mod-border);
 }
 
+.modules-modal__panel--wide {
+  max-width: 720px;
+}
+
+.modules-modal__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.modules-modal__tab {
+  padding: 6px 12px;
+  border: 1px solid var(--mod-border);
+  border-radius: 999px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--mod-muted);
+}
+
+.modules-modal__tab.is-active {
+  border-color: var(--mod-accent);
+  color: var(--mod-text);
+  background: var(--mod-surface);
+}
+
+.modules-modal__hint {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--mod-muted);
+}
+
+.modules-modal__error {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: rgba(220, 38, 38, 0.08);
+  color: #b91c1c;
+  font-size: 13px;
+}
+
+.modules-modal__quality-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.modules-modal__gen-btn {
+  margin-bottom: 16px;
+}
+
+.modules-modal__preview {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--mod-border);
+}
+
+.modules-modal__preview img {
+  width: 100%;
+  max-height: 280px;
+  object-fit: contain;
+  border-radius: 8px;
+  border: 1px solid var(--mod-border);
+  background: var(--mod-surface);
+}
+
+/* ── Rich text rendering ─────────────────────────────────────────── */
+.modules-rich-text {
+  width: 100%;
+  line-height: 1.35;
+}
+
+.modules-rich-text__line {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.modules-rich-text__bullet {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.modules-rich-text__content {
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.modules-rich-text__spacer {
+  height: 0.5em;
+}
+
+/* ── Shape elements ──────────────────────────────────────────────── */
+.modules-el--shape {
+  pointer-events: auto;
+}
+
+.modules-el__shape-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.modules__shape-menu {
+  position: relative;
+}
+
+.modules__shape-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 50;
+  min-width: 140px;
+  padding: 4px;
+  border: 1px solid var(--mod-border);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.modules__shape-option {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  color: var(--mod-text);
+}
+
+.modules__shape-option:hover {
+  background: var(--mod-surface);
+}
+
+.modules-thumb__el--shape {
+  background: rgba(99, 102, 241, 0.35);
+  border: 1px solid rgba(99, 102, 241, 0.5);
+}
+
 /* ── Present mode ────────────────────────────────────────────────── */
 .modules-present {
   position: fixed;

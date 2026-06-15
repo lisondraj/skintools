@@ -6,17 +6,21 @@ import { SlideCanvas } from "@/components/modules/SlideCanvas";
 import { SlideThumbnails } from "@/components/modules/SlideThumbnails";
 import { ElementPropertiesPanel, type TextSelectionInfo } from "@/components/modules/ElementPropertiesPanel";
 import { ImageLibrary } from "@/components/modules/ImageLibrary";
+import { DeckGeneratorModal } from "@/components/modules/DeckGeneratorModal";
 import { PresentMode } from "@/components/modules/PresentMode";
-import { autofillSlide, autofillText } from "@/lib/modules/client";
+import { autofillSlide, autofillText, generateDeck, generateSlideImage } from "@/lib/modules/client";
 import {
   clampElement,
   createImageElement,
+  createShapeElement,
   createTextElement,
   duplicateElement,
   shiftElementZ,
+  slideElementsFromLayout,
 } from "@/lib/modules/elements";
 import {
   addSlide,
+  createEmptySlide,
   createNewDeck,
   deleteSlide,
   duplicateSlide,
@@ -27,20 +31,23 @@ import {
   moveSlide,
   nextElementZ,
   onStorageError,
+  saveDeck,
   updateDeckTitle,
   updateSimConfig,
   updateSlide,
 } from "@/lib/modules/storage";
 import { buildSlideTemplate, type SlideTemplateId } from "@/lib/modules/templates";
 import { buildSlideAIContext } from "@/lib/modules/context";
-import type { AutofillMode, Deck, SlideElement } from "@/lib/modules/types";
-import { MODULES_STAGE_W } from "@/lib/modules/types";
+import { SHAPE_OPTIONS } from "@/lib/modules/shapes";
+import type { AutofillMode, Deck, ShapeKind, Slide, SlideElement } from "@/lib/modules/types";
 
 export default function ModulesPage() {
   const [deck, setDeck] = useState<Deck | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [deckGenOpen, setDeckGenOpen] = useState(false);
+  const [shapeMenuOpen, setShapeMenuOpen] = useState(false);
   const [presenting, setPresenting] = useState(false);
   const [presentStartIndex, setPresentStartIndex] = useState(0);
   const [autofillBusy, setAutofillBusy] = useState(false);
@@ -140,6 +147,14 @@ export default function ModulesPage() {
     setSelectedElementId(el.id);
   }
 
+  function handleAddShape(shape: ShapeKind) {
+    if (!activeSlide || activeSlide.kind !== "content") return;
+    const el = createShapeElement(shape, nextElementZ(activeSlide.elements));
+    updateElements([...activeSlide.elements, el]);
+    setSelectedElementId(el.id);
+    setShapeMenuOpen(false);
+  }
+
   function handleAddImage(src: string) {
     if (!activeSlide || activeSlide.kind !== "content") return;
     const el = createImageElement(src, nextElementZ(activeSlide.elements));
@@ -222,26 +237,68 @@ export default function ModulesPage() {
         deckTitle: deck.title,
         slideContext: getSlideContext(),
       });
-      const title = createTextElement(layout.title, 1, {
-        x: 80,
-        y: 60,
-        w: MODULES_STAGE_W - 160,
-        h: 72,
-        fontSize: 36,
-        fontWeight: 600,
-      });
-      const body = createTextElement(layout.body, 2, {
-        x: 80,
-        y: 160,
-        w: MODULES_STAGE_W - 160,
-        h: 280,
-        fontSize: 22,
-        fontWeight: 400,
-      });
-      updateElements([title, body]);
-      setSelectedElementId(title.id);
+      const { elements } = slideElementsFromLayout(layout);
+      updateElements(elements);
+      setSelectedElementId(elements[0]?.id ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Slide generation failed.");
+    } finally {
+      setAutofillBusy(false);
+    }
+  }
+
+  async function handleGenerateDeck(prompt: string, slideCount: number) {
+    if (!deck) return;
+    setAutofillBusy(true);
+    setError("");
+    try {
+      const result = await generateDeck({
+        prompt,
+        slideCount,
+        deckTitle: deck.title,
+      });
+
+      const slides: Slide[] = result.slides.map((layout) => {
+        const { elements, notes } = slideElementsFromLayout(layout, layout.notes);
+        return {
+          ...createEmptySlide("content"),
+          elements,
+          notes: notes ?? layout.notes,
+        };
+      });
+
+      const next: Deck = {
+        ...deck,
+        title: result.deckTitle,
+        slides,
+        updatedAt: Date.now(),
+      };
+      saveDeck(next);
+      setDeck(next);
+      setActiveIndex(0);
+      setSelectedElementId(null);
+      setDeckGenOpen(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Deck generation failed.");
+    } finally {
+      setAutofillBusy(false);
+    }
+  }
+
+  async function handleGenerateBackground(prompt: string) {
+    if (!deck || !activeSlide || activeSlide.kind !== "content") return;
+    setAutofillBusy(true);
+    setError("");
+    try {
+      const image = await generateSlideImage({
+        prompt,
+        purpose: "background",
+        qualityMode: "fast",
+      });
+      const next = updateSlide(activeSlide.id, (slide) => ({ ...slide, background: image }));
+      if (next) setDeck(next);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Background generation failed.");
     } finally {
       setAutofillBusy(false);
     }
@@ -334,12 +391,43 @@ export default function ModulesPage() {
 
         {isContent && (
           <div className="modules__topbar-tools">
+            <button
+              type="button"
+              className="modules-action-btn modules-action-btn--primary"
+              disabled={autofillBusy}
+              onClick={() => setDeckGenOpen(true)}
+            >
+              AI Deck
+            </button>
             <button type="button" className="modules-action-btn" onClick={handleAddText}>
               + Text
             </button>
             <button type="button" className="modules-action-btn" onClick={() => setLibraryOpen(true)}>
               + Image
             </button>
+            <div className="modules__shape-menu">
+              <button
+                type="button"
+                className="modules-action-btn"
+                onClick={() => setShapeMenuOpen((open) => !open)}
+              >
+                + Shape
+              </button>
+              {shapeMenuOpen && (
+                <div className="modules__shape-dropdown">
+                  {SHAPE_OPTIONS.map((shape) => (
+                    <button
+                      key={shape.id}
+                      type="button"
+                      className="modules__shape-option"
+                      onClick={() => handleAddShape(shape.id)}
+                    >
+                      {shape.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -457,8 +545,15 @@ export default function ModulesPage() {
               ),
             );
           }}
-          onUpdateBackground={(color) => {
-            const next = updateSlide(activeSlide.id, (slide) => ({ ...slide, background: color }));
+          onUpdateShape={(id, patch) => {
+            updateElements(
+              activeSlide.elements.map((el) =>
+                el.id === id && el.kind === "shape" ? { ...el, ...patch } : el,
+              ),
+            );
+          }}
+          onUpdateBackground={(background) => {
+            const next = updateSlide(activeSlide.id, (slide) => ({ ...slide, background }));
             if (next) setDeck(next);
           }}
           onUpdateNotes={(notes) => {
@@ -484,6 +579,7 @@ export default function ModulesPage() {
           onAutofill={(mode, prompt) => void handleAutofill(mode, prompt)}
           onGenerateSlide={(prompt) => void handleGenerateSlide(prompt)}
           onGenerateNotes={() => void handleGenerateNotes()}
+          onGenerateBackground={(prompt) => void handleGenerateBackground(prompt)}
           onTextSelectionChange={setTextSelection}
           onDuplicateSlide={() => {
             const next = duplicateSlide(activeSlide.id);
@@ -525,6 +621,13 @@ export default function ModulesPage() {
         open={libraryOpen}
         onClose={() => setLibraryOpen(false)}
         onSelectImage={handleAddImage}
+      />
+
+      <DeckGeneratorModal
+        open={deckGenOpen}
+        busy={autofillBusy}
+        onClose={() => setDeckGenOpen(false)}
+        onGenerate={(prompt, count) => void handleGenerateDeck(prompt, count)}
       />
     </div>
   );

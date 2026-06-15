@@ -1,4 +1,13 @@
-import type { AutofillReq, AutofillRes, RealtimeSessionReq, RealtimeSessionRes } from "./types";
+import type {
+  AutofillReq,
+  AutofillRes,
+  GenerateDeckReq,
+  GenerateDeckRes,
+  GenerateImageReq,
+  GenerateImageRes,
+  RealtimeSessionReq,
+  RealtimeSessionRes,
+} from "./types";
 
 async function parseJson<T>(response: Response): Promise<T & { error?: string }> {
   const data = (await response.json()) as T & { error?: string };
@@ -25,6 +34,25 @@ export async function autofillSlide(req: Omit<AutofillReq, "mode">): Promise<{ t
     body: JSON.stringify({ ...req, mode: "slide" }),
   });
   return parseJson<{ title: string; body: string }>(response);
+}
+
+export async function generateSlideImage(req: GenerateImageReq): Promise<string> {
+  const response = await fetch("/api/modules/generate-image", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
+  });
+  const data = await parseJson<GenerateImageRes>(response);
+  return data.image;
+}
+
+export async function generateDeck(req: GenerateDeckReq): Promise<GenerateDeckRes> {
+  const response = await fetch("/api/modules/generate-deck", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
+  });
+  return parseJson<GenerateDeckRes>(response);
 }
 
 export async function createRealtimeSession(

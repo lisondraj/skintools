@@ -1,10 +1,13 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { AutofillMode, Slide, SlideElement, TextElement } from "@/lib/modules/types";
+import type { AutofillMode, ShapeElement, Slide, SlideElement, TextElement } from "@/lib/modules/types";
 import { SLIDE_TEMPLATES, type SlideTemplateId } from "@/lib/modules/templates";
 import { SELECTION_AI_ACTIONS, TEXT_AI_ACTIONS } from "@/lib/modules/ai-actions";
 import { SLIDE_FONT_STYLES } from "@/lib/modules/fonts";
+import { SHAPE_OPTIONS } from "@/lib/modules/shapes";
+import { RICH_TEXT_HINT } from "@/lib/modules/rich-text";
+import { isSlideBackgroundImage } from "@/lib/modules/background";
 
 export type TextSelectionInfo = {
   elementId: string;
@@ -21,7 +24,8 @@ type Props = {
   textSelection: TextSelectionInfo | null;
   autofillBusy: boolean;
   onUpdateText: (id: string, patch: Partial<TextElement>) => void;
-  onUpdateBackground: (color: string) => void;
+  onUpdateShape: (id: string, patch: Partial<ShapeElement>) => void;
+  onUpdateBackground: (background: string) => void;
   onUpdateNotes: (notes: string) => void;
   onApplyTemplate: (templateId: SlideTemplateId) => void;
   onDeleteElement: () => void;
@@ -31,6 +35,7 @@ type Props = {
   onAutofill: (mode: AutofillMode, prompt?: string) => void;
   onGenerateSlide: (prompt: string) => void;
   onGenerateNotes: () => void;
+  onGenerateBackground: (prompt: string) => void;
   onTextSelectionChange: (info: TextSelectionInfo | null) => void;
   onDuplicateSlide: () => void;
   onMoveSlide: (direction: "up" | "down") => void;
@@ -47,6 +52,7 @@ export function ElementPropertiesPanel({
   textSelection,
   autofillBusy,
   onUpdateText,
+  onUpdateShape,
   onUpdateBackground,
   onUpdateNotes,
   onApplyTemplate,
@@ -57,6 +63,7 @@ export function ElementPropertiesPanel({
   onAutofill,
   onGenerateSlide,
   onGenerateNotes,
+  onGenerateBackground,
   onTextSelectionChange,
   onDuplicateSlide,
   onMoveSlide,
@@ -65,9 +72,11 @@ export function ElementPropertiesPanel({
   const [aiPrompt, setAiPrompt] = useState("");
   const [slidePrompt, setSlidePrompt] = useState("");
   const [selectionPrompt, setSelectionPrompt] = useState("");
+  const [bgPrompt, setBgPrompt] = useState("");
   const contentRef = useRef<HTMLTextAreaElement>(null);
   const isContent = slide.kind === "content";
   const isText = selectedElement?.kind === "text";
+  const isShape = selectedElement?.kind === "shape";
   const hasSelection =
     isText &&
     textSelection &&
@@ -121,12 +130,43 @@ export function ElementPropertiesPanel({
                 <input
                   type="color"
                   className="modules-panel__color-input"
-                  value={slide.background}
+                  value={isSlideBackgroundImage(slide.background) ? "#ffffff" : slide.background}
                   onChange={(e) => onUpdateBackground(e.target.value)}
                   aria-label="Custom background color"
                 />
               </div>
+              {isSlideBackgroundImage(slide.background) && (
+                <button
+                  type="button"
+                  className="modules-btn modules-btn--ghost modules-panel__full-btn"
+                  onClick={() => onUpdateBackground("#ffffff")}
+                >
+                  Remove background image
+                </button>
+              )}
             </label>
+
+            <label className="modules-field">
+              <span className="modules-field__label">AI background (GPT Image 2)</span>
+              <textarea
+                className="modules-field__input"
+                rows={2}
+                placeholder="e.g. Soft blue gradient, abstract medical theme, minimal…"
+                value={bgPrompt}
+                onChange={(e) => setBgPrompt(e.target.value)}
+              />
+            </label>
+            <button
+              type="button"
+              className="modules-btn modules-btn--secondary modules-panel__full-btn"
+              disabled={autofillBusy || !bgPrompt.trim()}
+              onClick={() => {
+                onGenerateBackground(bgPrompt.trim());
+                setBgPrompt("");
+              }}
+            >
+              {autofillBusy ? "Generating…" : "Generate background"}
+            </button>
 
             <label className="modules-field">
               <span className="modules-field__label">Layout template</span>
@@ -258,11 +298,12 @@ export function ElementPropertiesPanel({
       {isContent && selectedElement && (
         <div className="modules-panel__section">
           <h2 className="modules-panel__heading">
-            {isText ? "Text" : "Image"}
+            {isText ? "Text" : isShape ? "Shape" : "Image"}
           </h2>
 
           {isText && (
             <>
+              <p className="modules-panel__hint">{RICH_TEXT_HINT}</p>
               <label className="modules-field">
                 <span className="modules-field__label">Content</span>
                 <textarea
@@ -408,20 +449,94 @@ export function ElementPropertiesPanel({
             </>
           )}
 
-          <div className="modules-panel__btn-row">
-            <button type="button" className="modules-btn modules-btn--secondary" onClick={onDuplicateElement}>
-              Duplicate
-            </button>
-            <button type="button" className="modules-btn modules-btn--secondary" onClick={onBringForward}>
-              Forward
-            </button>
-            <button type="button" className="modules-btn modules-btn--secondary" onClick={onSendBackward}>
-              Back
-            </button>
-          </div>
-          <button type="button" className="modules-btn modules-btn--ghost modules-panel__danger" onClick={onDeleteElement}>
-            Delete element
-          </button>
+          {isShape && selectedElement.kind === "shape" && (
+            <>
+              <label className="modules-field">
+                <span className="modules-field__label">Shape</span>
+                <select
+                  className="modules-field__input"
+                  value={selectedElement.shape}
+                  onChange={(e) =>
+                    onUpdateShape(selectedElement.id, {
+                      shape: e.target.value as ShapeElement["shape"],
+                    })
+                  }
+                >
+                  {SHAPE_OPTIONS.map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="modules-field">
+                <span className="modules-field__label">Fill</span>
+                <input
+                  type="color"
+                  className="modules-panel__color-input modules-panel__color-input--wide"
+                  value={selectedElement.fill}
+                  onChange={(e) => onUpdateShape(selectedElement.id, { fill: e.target.value })}
+                />
+              </label>
+
+              <label className="modules-field">
+                <span className="modules-field__label">Stroke</span>
+                <input
+                  type="color"
+                  className="modules-panel__color-input modules-panel__color-input--wide"
+                  value={selectedElement.stroke}
+                  onChange={(e) => onUpdateShape(selectedElement.id, { stroke: e.target.value })}
+                />
+              </label>
+
+              <label className="modules-field">
+                <span className="modules-field__label">Stroke width ({selectedElement.strokeWidth}px)</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={12}
+                  value={selectedElement.strokeWidth}
+                  onChange={(e) =>
+                    onUpdateShape(selectedElement.id, { strokeWidth: Number(e.target.value) })
+                  }
+                />
+              </label>
+
+              <label className="modules-field">
+                <span className="modules-field__label">Opacity ({Math.round(selectedElement.opacity * 100)}%)</span>
+                <input
+                  type="range"
+                  min={0.1}
+                  max={1}
+                  step={0.05}
+                  value={selectedElement.opacity}
+                  onChange={(e) =>
+                    onUpdateShape(selectedElement.id, { opacity: Number(e.target.value) })
+                  }
+                />
+              </label>
+            </>
+          )}
+
+          {(isText || isShape || selectedElement?.kind === "image") && (
+            <>
+              <div className="modules-panel__btn-row">
+                <button type="button" className="modules-btn modules-btn--secondary" onClick={onDuplicateElement}>
+                  Duplicate
+                </button>
+                <button type="button" className="modules-btn modules-btn--secondary" onClick={onBringForward}>
+                  Forward
+                </button>
+                <button type="button" className="modules-btn modules-btn--secondary" onClick={onSendBackward}>
+                  Back
+                </button>
+              </div>
+              <button type="button" className="modules-btn modules-btn--ghost modules-panel__danger" onClick={onDeleteElement}>
+                Delete element
+              </button>
+            </>
+          )}
         </div>
       )}
 

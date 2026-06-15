@@ -2,6 +2,7 @@
 
 import type { Slide } from "@/lib/modules/types";
 import { MODULES_STAGE_H, MODULES_STAGE_W } from "@/lib/modules/types";
+import { slideBackgroundStyle } from "@/lib/modules/background";
 
 type Props = {
   slides: Slide[];
@@ -48,7 +49,7 @@ export function SlideThumbnails({
               <span className="modules-thumb__num">{index + 1}</span>
               <div
                 className="modules-thumb__preview"
-                style={{ background: slide.background }}
+                style={slideBackgroundStyle(slide.background)}
               >
                 {slide.kind === "patient-sim" ? (
                   <span className="modules-thumb__sim">Sim</span>
