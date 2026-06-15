@@ -48,8 +48,7 @@ function SpeakingOrb({ level, status }: { level: number; status: SimStatus }) {
         style={{
           transform: `scale(${scale})`,
           opacity,
-          background: `radial-gradient(circle at 38% 38%, ${color}cc, ${color})`,
-          boxShadow: `0 0 ${24 + level * 48}px ${color}66`,
+          background: color,
         }}
       />
     </div>

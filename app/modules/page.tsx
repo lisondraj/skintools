@@ -4,18 +4,23 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { SlideCanvas } from "@/components/modules/SlideCanvas";
 import { SlideThumbnails } from "@/components/modules/SlideThumbnails";
+import { ElementPropertiesPanel } from "@/components/modules/ElementPropertiesPanel";
 import { ImageLibrary } from "@/components/modules/ImageLibrary";
 import { PresentMode } from "@/components/modules/PresentMode";
 import { autofillText } from "@/lib/modules/client";
 import {
   createImageElement,
   createTextElement,
+  duplicateElement,
+  shiftElementZ,
 } from "@/lib/modules/elements";
 import {
   addSlide,
   deleteSlide,
+  duplicateSlide,
   getDeck,
   hydrateDeck,
+  moveSlide,
   nextElementZ,
   onStorageError,
   updateDeckTitle,
@@ -51,6 +56,26 @@ export default function ModulesPage() {
     [activeSlide, deck, refreshDeck],
   );
 
+  const handleDeleteElement = useCallback(() => {
+    if (!activeSlide || !selectedElementId) return;
+    updateElements(activeSlide.elements.filter((el) => el.id !== selectedElementId));
+    setSelectedElementId(null);
+  }, [activeSlide, selectedElementId, updateElements]);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
+      if ((e.key === "Delete" || e.key === "Backspace") && selectedElementId) {
+        e.preventDefault();
+        handleDeleteElement();
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [handleDeleteElement, selectedElementId]);
+
   function handleAddText() {
     if (!activeSlide || activeSlide.kind !== "content") return;
     const el = createTextElement(undefined, nextElementZ(activeSlide.elements));
@@ -63,6 +88,7 @@ export default function ModulesPage() {
     const el = createImageElement(src, nextElementZ(activeSlide.elements));
     updateElements([...activeSlide.elements, el]);
     setSelectedElementId(el.id);
+    setLibraryOpen(false);
   }
 
   async function handleAutofill(mode: AutofillMode, prompt?: string) {
@@ -111,11 +137,9 @@ export default function ModulesPage() {
 
   const selectedEl = activeSlide.elements.find((el) => el.id === selectedElementId);
   const isContent = activeSlide.kind === "content";
-  const selectedIsText = selectedEl?.kind === "text";
 
   return (
     <div className="modules__app">
-      {/* ── Top bar ─────────────────────────────────────────────── */}
       <header className="modules__topbar">
         <div className="modules__topbar-left">
           <Link href="/" className="modules__home-link" aria-label="Back to home">
@@ -133,45 +157,24 @@ export default function ModulesPage() {
           />
         </div>
 
-        <nav className="modules__topbar-actions" aria-label="Slide tools">
-          {isContent && (
-            <>
-              <button type="button" className="modules-action-btn" onClick={handleAddText}>
-                Text
-              </button>
-              <button type="button" className="modules-action-btn" onClick={() => setLibraryOpen(true)}>
-                Image
-              </button>
-              <span className="modules__divider" aria-hidden />
-              <button
-                type="button"
-                className="modules-action-btn"
-                disabled={autofillBusy}
-                onClick={() => {
-                  const prompt = window.prompt("What should this text box say?");
-                  if (prompt?.trim()) void handleAutofill("generate", prompt.trim());
-                }}
-              >
-                {autofillBusy ? "Working…" : "AI Generate"}
-              </button>
-              {selectedIsText && (
-                <>
-                  <button type="button" className="modules-action-btn" disabled={autofillBusy} onClick={() => void handleAutofill("rewrite")}>Rewrite</button>
-                  <button type="button" className="modules-action-btn" disabled={autofillBusy} onClick={() => void handleAutofill("expand")}>Expand</button>
-                  <button type="button" className="modules-action-btn" disabled={autofillBusy} onClick={() => void handleAutofill("shorten")}>Shorten</button>
-                </>
-              )}
-              <span className="modules__divider" aria-hidden />
-            </>
-          )}
-          <button
-            type="button"
-            className="modules-action-btn modules-action-btn--primary"
-            onClick={() => setPresenting(true)}
-          >
-            Present
-          </button>
-        </nav>
+        {isContent && (
+          <div className="modules__topbar-tools">
+            <button type="button" className="modules-action-btn" onClick={handleAddText}>
+              + Text
+            </button>
+            <button type="button" className="modules-action-btn" onClick={() => setLibraryOpen(true)}>
+              + Image
+            </button>
+          </div>
+        )}
+
+        <button
+          type="button"
+          className="modules-action-btn modules-action-btn--primary"
+          onClick={() => setPresenting(true)}
+        >
+          Present
+        </button>
       </header>
 
       {error && (
@@ -181,7 +184,6 @@ export default function ModulesPage() {
         </div>
       )}
 
-      {/* ── Workspace ───────────────────────────────────────────── */}
       <div className="modules__workspace">
         <SlideThumbnails
           slides={deck.slides}
@@ -201,6 +203,7 @@ export default function ModulesPage() {
             if (next) {
               setDeck(next);
               setActiveIndex(Math.min(index, next.slides.length - 1));
+              setSelectedElementId(null);
             }
           }}
         />
@@ -217,7 +220,75 @@ export default function ModulesPage() {
             }}
           />
         </main>
+
+        <ElementPropertiesPanel
+          slide={activeSlide}
+          slideIndex={activeIndex}
+          slideCount={deck.slides.length}
+          selectedElement={selectedEl}
+          autofillBusy={autofillBusy}
+          onUpdateText={(id, patch) => {
+            updateElements(
+              activeSlide.elements.map((el) =>
+                el.id === id && el.kind === "text" ? { ...el, ...patch } : el,
+              ),
+            );
+          }}
+          onUpdateBackground={(color) => {
+            const next = updateSlide(activeSlide.id, (slide) => ({ ...slide, background: color }));
+            if (next) setDeck(next);
+          }}
+          onDeleteElement={handleDeleteElement}
+          onDuplicateElement={() => {
+            if (!selectedEl) return;
+            const copy = duplicateElement(selectedEl, nextElementZ(activeSlide.elements));
+            updateElements([...activeSlide.elements, copy]);
+            setSelectedElementId(copy.id);
+          }}
+          onBringForward={() => {
+            if (!selectedElementId) return;
+            updateElements(shiftElementZ(activeSlide.elements, selectedElementId, "forward"));
+          }}
+          onSendBackward={() => {
+            if (!selectedElementId) return;
+            updateElements(shiftElementZ(activeSlide.elements, selectedElementId, "backward"));
+          }}
+          onAutofill={(mode, prompt) => void handleAutofill(mode, prompt)}
+          onDuplicateSlide={() => {
+            const next = duplicateSlide(activeSlide.id);
+            if (next) {
+              setDeck(next);
+              setActiveIndex(activeIndex + 1);
+              setSelectedElementId(null);
+            }
+          }}
+          onMoveSlide={(direction) => {
+            const next = moveSlide(activeSlide.id, direction);
+            if (next) {
+              setDeck(next);
+              const newIndex = direction === "up" ? activeIndex - 1 : activeIndex + 1;
+              setActiveIndex(newIndex);
+            }
+          }}
+          onDeleteSlide={() => {
+            const next = deleteSlide(activeSlide.id);
+            if (next) {
+              setDeck(next);
+              setActiveIndex(Math.min(activeIndex, next.slides.length - 1));
+              setSelectedElementId(null);
+            }
+          }}
+        />
       </div>
+
+      <footer className="modules__statusbar">
+        <span>
+          {isContent
+            ? "Double-click text to edit · Delete to remove selection"
+            : "Configure the virtual patient in the canvas"}
+        </span>
+        <span>{deck.slides.length} slide{deck.slides.length === 1 ? "" : "s"}</span>
+      </footer>
 
       <ImageLibrary
         open={libraryOpen}

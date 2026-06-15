@@ -54,7 +54,11 @@ export function SlideCanvas({
 
     const ro = new ResizeObserver(() => {
       const w = wrap.clientWidth;
-      setScale(w / MODULES_STAGE_W);
+      const h = wrap.clientHeight;
+      if (w <= 0 || h <= 0) return;
+      const scaleW = w / MODULES_STAGE_W;
+      const scaleH = h / MODULES_STAGE_H;
+      setScale(Math.min(scaleW, scaleH));
     });
     ro.observe(wrap);
     return () => ro.disconnect();
@@ -169,11 +173,13 @@ export function SlideCanvas({
 
   if (slide.kind === "patient-sim" && !readOnly) {
     return (
-      <div className="modules-canvas-wrap" ref={wrapRef}>
-        <PatientSimConfigPanel
-          sim={slide.sim}
-          onChange={(sim) => onChangeSim?.(sim)}
-        />
+      <div className="modules-canvas-wrap modules-canvas-wrap--sim" ref={wrapRef}>
+        <div className="modules-sim-config-card">
+          <PatientSimConfigPanel
+            sim={slide.sim}
+            onChange={(sim) => onChangeSim?.(sim)}
+          />
+        </div>
       </div>
     );
   }

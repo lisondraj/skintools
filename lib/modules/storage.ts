@@ -219,6 +219,46 @@ export function reorderSlides(fromIndex: number, toIndex: number): Deck | null {
   return next;
 }
 
+function cloneSlide(slide: Slide): Slide {
+  return {
+    ...slide,
+    id: crypto.randomUUID(),
+    elements: slide.elements.map((el) => ({
+      ...el,
+      id: crypto.randomUUID(),
+    })),
+    sim: slide.sim ? { ...slide.sim } : undefined,
+  };
+}
+
+export function duplicateSlide(slideId: string): Deck | null {
+  const deck = getDeck();
+  if (!deck) return null;
+
+  const index = deck.slides.findIndex((slide) => slide.id === slideId);
+  if (index === -1) return null;
+
+  const slides = [...deck.slides];
+  slides.splice(index + 1, 0, cloneSlide(deck.slides[index]));
+
+  const next = { ...deck, slides, updatedAt: Date.now() };
+  saveDeck(next);
+  return next;
+}
+
+export function moveSlide(slideId: string, direction: "up" | "down"): Deck | null {
+  const deck = getDeck();
+  if (!deck) return null;
+
+  const index = deck.slides.findIndex((slide) => slide.id === slideId);
+  if (index === -1) return null;
+
+  const target = direction === "up" ? index - 1 : index + 1;
+  if (target < 0 || target >= deck.slides.length) return deck;
+
+  return reorderSlides(index, target);
+}
+
 export function updateSimConfig(
   slideId: string,
   sim: Partial<PatientSimConfig>,

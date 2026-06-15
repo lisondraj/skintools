@@ -22,19 +22,19 @@ export function SlideThumbnails({
     <aside className="modules-filmstrip">
       <div className="modules-filmstrip__header">
         <span className="modules-filmstrip__label">Slides</span>
-        <div className="modules-filmstrip__add">
-          <button type="button" className="modules-btn modules-btn--ghost" onClick={() => onAdd("content")}>
-            + Slide
-          </button>
-          <button
-            type="button"
-            className="modules-btn modules-btn--ghost"
-            onClick={() => onAdd("patient-sim")}
-            title="Add virtual patient slide"
-          >
-            + Sim
-          </button>
-        </div>
+      </div>
+      <div className="modules-filmstrip__add-row">
+        <button type="button" className="modules-btn modules-btn--secondary modules-filmstrip__add-btn" onClick={() => onAdd("content")}>
+          + Slide
+        </button>
+        <button
+          type="button"
+          className="modules-btn modules-btn--secondary modules-filmstrip__add-btn"
+          onClick={() => onAdd("patient-sim")}
+          title="Add virtual patient slide"
+        >
+          + Sim
+        </button>
       </div>
 
       <ol className="modules-filmstrip__list">

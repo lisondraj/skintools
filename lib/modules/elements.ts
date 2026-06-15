@@ -46,3 +46,34 @@ export function clampElement(el: SlideElement): SlideElement {
 export function sortByZ(elements: SlideElement[]): SlideElement[] {
   return [...elements].sort((a, b) => a.z - b.z);
 }
+
+export function duplicateElement(el: SlideElement, z: number): SlideElement {
+  return {
+    ...el,
+    id: crypto.randomUUID(),
+    x: Math.min(el.x + 24, MODULES_STAGE_W - el.w),
+    y: Math.min(el.y + 24, MODULES_STAGE_H - el.h),
+    z,
+  };
+}
+
+export function shiftElementZ(
+  elements: SlideElement[],
+  id: string,
+  direction: "forward" | "backward",
+): SlideElement[] {
+  const sorted = sortByZ(elements);
+  const idx = sorted.findIndex((el) => el.id === id);
+  if (idx === -1) return elements;
+
+  const swapIdx = direction === "forward" ? idx + 1 : idx - 1;
+  if (swapIdx < 0 || swapIdx >= sorted.length) return elements;
+
+  const current = sorted[idx];
+  const neighbor = sorted[swapIdx];
+  return elements.map((el) => {
+    if (el.id === current.id) return { ...el, z: neighbor.z };
+    if (el.id === neighbor.id) return { ...el, z: current.z };
+    return el;
+  });
+}

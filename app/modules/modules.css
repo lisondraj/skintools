@@ -10,7 +10,9 @@
   --mod-accent: #111111;
   --mod-radius: 8px;
   --mod-topbar-h: 52px;
-  --mod-filmstrip-w: 168px;
+  --mod-statusbar-h: 32px;
+  --mod-filmstrip-w: 176px;
+  --mod-panel-w: 260px;
 
   height: 100dvh;
   overflow: hidden;
@@ -53,13 +55,12 @@
 
 /* ── Top bar ─────────────────────────────────────────────────────── */
 .modules__topbar {
-  height: var(--mod-topbar-h);
+  min-height: var(--mod-topbar-h);
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
-  padding: 0 16px;
+  padding: 8px 16px;
   border-bottom: 1px solid var(--mod-border);
   background: var(--mod-bg);
 }
@@ -69,6 +70,7 @@
   align-items: center;
   gap: 12px;
   min-width: 0;
+  flex: 1 1 auto;
 }
 
 .modules__home-link {
@@ -93,7 +95,8 @@
 
 .modules__title-input {
   min-width: 0;
-  width: 220px;
+  flex: 1 1 120px;
+  max-width: 420px;
   padding: 6px 10px;
   border: 1px solid transparent;
   border-radius: var(--mod-radius);
@@ -114,6 +117,18 @@
   border-color: var(--mod-border-strong);
   background: var(--mod-surface);
 }
+
+.modules__topbar-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  overflow-x: auto;
+  max-width: min(280px, 40vw);
+  scrollbar-width: none;
+}
+
+.modules__topbar-tools::-webkit-scrollbar { display: none; }
 
 .modules__topbar-actions {
   display: flex;
@@ -196,7 +211,7 @@
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: var(--mod-filmstrip-w) minmax(0, 1fr);
+  grid-template-columns: var(--mod-filmstrip-w) minmax(0, 1fr) var(--mod-panel-w);
 }
 
 /* ── Filmstrip ───────────────────────────────────────────────────── */
@@ -211,11 +226,21 @@
 
 .modules-filmstrip__header {
   flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 12px 8px;
+  padding: 10px 12px 6px;
+}
+
+.modules-filmstrip__add-row {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 0 10px 10px;
   border-bottom: 1px solid var(--mod-border);
+}
+
+.modules-filmstrip__add-btn {
+  padding: 6px 8px;
+  font-size: 12px;
 }
 
 .modules-filmstrip__label {
@@ -224,11 +249,6 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--mod-muted);
-}
-
-.modules-filmstrip__add {
-  display: flex;
-  gap: 4px;
 }
 
 .modules-filmstrip__list {
@@ -330,16 +350,36 @@
 /* ── Canvas area ─────────────────────────────────────────────────── */
 .modules__canvas-area {
   min-width: 0;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 28px;
-  background: #efefef;
+  padding: 20px;
+  background: #ececec;
   overflow: auto;
 }
 
 .modules-canvas-wrap {
   width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modules-canvas-wrap--sim {
+  align-items: stretch;
+}
+
+.modules-sim-config-card {
+  width: 100%;
+  max-width: 640px;
+  max-height: 100%;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid var(--mod-border);
+  border-radius: var(--mod-radius);
+  align-self: center;
 }
 
 .modules-canvas {
@@ -878,4 +918,182 @@
   gap: 10px;
   padding: 16px 20px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ── Properties panel ────────────────────────────────────────────── */
+.modules-panel {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  border-left: 1px solid var(--mod-border);
+  background: var(--mod-bg);
+}
+
+.modules-panel__section {
+  padding: 14px 14px 16px;
+  border-bottom: 1px solid var(--mod-border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.modules-panel__heading {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mod-muted);
+}
+
+.modules-panel__meta,
+.modules-panel__hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--mod-muted);
+}
+
+.modules-panel__btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.modules-panel__btn-row .modules-btn {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 7px 10px;
+  font-size: 12px;
+}
+
+.modules-panel__full-btn {
+  width: 100%;
+}
+
+.modules-panel__align-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.modules-panel__align-row .modules-btn {
+  padding: 7px 8px;
+  font-size: 12px;
+}
+
+.modules-panel__swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.modules-panel__swatch {
+  width: 24px;
+  height: 24px;
+  border: 1.5px solid var(--mod-border);
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.modules-panel__swatch.is-active {
+  border-color: var(--mod-accent);
+  outline: 1px solid var(--mod-accent);
+  outline-offset: 1px;
+}
+
+.modules-panel__color-input {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--mod-border);
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+}
+
+.modules-panel__color-input--wide {
+  width: 100%;
+  height: 36px;
+}
+
+.modules-panel__danger {
+  color: #b91c1c;
+  align-self: flex-start;
+}
+
+.modules-panel__danger:hover:not(:disabled) {
+  background: rgba(220, 38, 38, 0.06);
+  border-color: rgba(220, 38, 38, 0.2);
+  color: #b91c1c;
+}
+
+.modules-field input[type="range"] {
+  width: 100%;
+  accent-color: var(--mod-accent);
+}
+
+select.modules-field__input {
+  resize: none;
+}
+
+/* ── Status bar ──────────────────────────────────────────────────── */
+.modules__statusbar {
+  flex-shrink: 0;
+  height: var(--mod-statusbar-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 16px;
+  border-top: 1px solid var(--mod-border);
+  background: var(--mod-surface);
+  font-size: 11px;
+  color: var(--mod-muted);
+}
+
+.modules__statusbar span:last-child {
+  flex-shrink: 0;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  .modules {
+    --mod-panel-w: 220px;
+  }
+}
+
+@media (max-width: 900px) {
+  .modules__workspace {
+    grid-template-columns: var(--mod-filmstrip-w) minmax(0, 1fr);
+  }
+
+  .modules-panel {
+    display: none;
+  }
+
+  .modules__topbar-tools {
+    max-width: 160px;
+  }
+}
+
+@media (max-width: 640px) {
+  .modules {
+    --mod-filmstrip-w: 120px;
+  }
+
+  .modules__canvas-area {
+    padding: 12px;
+  }
+
+  .modules-filmstrip__add-row {
+    grid-template-columns: 1fr;
+  }
+
+  .modules__statusbar span:first-child {
+    display: none;
+  }
 }
