@@ -27,6 +27,7 @@ type Props = {
   onSelectElement: (id: string | null) => void;
   onChangeElements: (elements: SlideElement[]) => void;
   onChangeSim?: (sim: Partial<PatientSimConfig>) => void;
+  onTextSelection?: (info: { elementId: string; start: number; end: number; text: string } | null) => void;
   readOnly?: boolean;
 };
 
@@ -36,6 +37,7 @@ export function SlideCanvas({
   onSelectElement,
   onChangeElements,
   onChangeSim,
+  onTextSelection,
   readOnly = false,
 }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -169,6 +171,27 @@ export function SlideCanvas({
       ),
     );
     setTextOverlay(null);
+    onTextSelection?.(null);
+  };
+
+  const reportSelection = () => {
+    const ta = textareaRef.current;
+    if (!ta || !textOverlay) {
+      onTextSelection?.(null);
+      return;
+    }
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    if (start !== end) {
+      onTextSelection?.({
+        elementId: textOverlay.id,
+        start,
+        end,
+        text: textOverlay.text.slice(start, end),
+      });
+    } else {
+      onTextSelection?.(null);
+    }
   };
 
   if (slide.kind === "patient-sim" && !readOnly) {
@@ -221,9 +244,15 @@ export function SlideCanvas({
             onChange={(e) =>
               setTextOverlay((prev) => prev && { ...prev, text: e.target.value })
             }
+            onSelect={reportSelection}
+            onKeyUp={reportSelection}
+            onMouseUp={reportSelection}
             onBlur={commitTextEdit}
             onKeyDown={(e) => {
-              if (e.key === "Escape") setTextOverlay(null);
+              if (e.key === "Escape") {
+                setTextOverlay(null);
+                onTextSelection?.(null);
+              }
               if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) commitTextEdit();
             }}
           />

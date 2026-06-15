@@ -1,14 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { AutofillMode, Slide, SlideElement, TextElement } from "@/lib/modules/types";
 import { SLIDE_TEMPLATES, type SlideTemplateId } from "@/lib/modules/templates";
+import { SELECTION_AI_ACTIONS, TEXT_AI_ACTIONS } from "@/lib/modules/ai-actions";
+
+export type TextSelectionInfo = {
+  elementId: string;
+  start: number;
+  end: number;
+  text: string;
+};
 
 type Props = {
   slide: Slide;
   slideIndex: number;
   slideCount: number;
   selectedElement: SlideElement | undefined;
+  textSelection: TextSelectionInfo | null;
   autofillBusy: boolean;
   onUpdateText: (id: string, patch: Partial<TextElement>) => void;
   onUpdateBackground: (color: string) => void;
@@ -20,6 +29,8 @@ type Props = {
   onSendBackward: () => void;
   onAutofill: (mode: AutofillMode, prompt?: string) => void;
   onGenerateSlide: (prompt: string) => void;
+  onGenerateNotes: () => void;
+  onTextSelectionChange: (info: TextSelectionInfo | null) => void;
   onDuplicateSlide: () => void;
   onMoveSlide: (direction: "up" | "down") => void;
   onDeleteSlide: () => void;
@@ -32,6 +43,7 @@ export function ElementPropertiesPanel({
   slideIndex,
   slideCount,
   selectedElement,
+  textSelection,
   autofillBusy,
   onUpdateText,
   onUpdateBackground,
@@ -43,14 +55,43 @@ export function ElementPropertiesPanel({
   onSendBackward,
   onAutofill,
   onGenerateSlide,
+  onGenerateNotes,
+  onTextSelectionChange,
   onDuplicateSlide,
   onMoveSlide,
   onDeleteSlide,
 }: Props) {
   const [aiPrompt, setAiPrompt] = useState("");
   const [slidePrompt, setSlidePrompt] = useState("");
+  const [selectionPrompt, setSelectionPrompt] = useState("");
+  const contentRef = useRef<HTMLTextAreaElement>(null);
   const isContent = slide.kind === "content";
   const isText = selectedElement?.kind === "text";
+  const hasSelection =
+    isText &&
+    textSelection &&
+    textSelection.elementId === selectedElement.id &&
+    textSelection.text.trim().length > 0;
+
+  function reportPanelSelection() {
+    const ta = contentRef.current;
+    if (!ta || !isText) {
+      onTextSelectionChange(null);
+      return;
+    }
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    if (start !== end) {
+      onTextSelectionChange({
+        elementId: selectedElement.id,
+        start,
+        end,
+        text: ta.value.slice(start, end),
+      });
+    } else {
+      onTextSelectionChange(null);
+    }
+  }
 
   return (
     <aside className="modules-panel" aria-label="Properties">
@@ -122,6 +163,16 @@ export function ElementPropertiesPanel({
             onChange={(e) => onUpdateNotes(e.target.value)}
           />
         </label>
+        {isContent && (
+          <button
+            type="button"
+            className="modules-btn modules-btn--secondary modules-panel__full-btn"
+            disabled={autofillBusy}
+            onClick={onGenerateNotes}
+          >
+            {autofillBusy ? "Working…" : "AI generate notes"}
+          </button>
+        )}
 
         <div className="modules-panel__btn-row">
           <button type="button" className="modules-btn modules-btn--secondary" onClick={onDuplicateSlide}>
@@ -154,6 +205,9 @@ export function ElementPropertiesPanel({
       {isContent && !selectedElement && (
         <div className="modules-panel__section">
           <h2 className="modules-panel__heading">AI</h2>
+          <p className="modules-panel__hint">
+            AI uses this slide&apos;s content, neighbouring slides, and deck title as context.
+          </p>
           <label className="modules-field">
             <span className="modules-field__label">Generate full slide</span>
             <textarea
@@ -209,6 +263,75 @@ export function ElementPropertiesPanel({
           {isText && (
             <>
               <label className="modules-field">
+                <span className="modules-field__label">Content</span>
+                <textarea
+                  ref={contentRef}
+                  className="modules-field__input modules-field__input--content"
+                  rows={5}
+                  value={selectedElement.text}
+                  onChange={(e) => onUpdateText(selectedElement.id, { text: e.target.value })}
+                  onSelect={reportPanelSelection}
+                  onKeyUp={reportPanelSelection}
+                  onMouseUp={reportPanelSelection}
+                />
+              </label>
+
+              {hasSelection && (
+                <div className="modules-panel__selection">
+                  <span className="modules-panel__selection-label">Selected</span>
+                  <p className="modules-panel__selection-text">&ldquo;{textSelection.text}&rdquo;</p>
+                </div>
+              )}
+
+              <div className="modules-field">
+                <span className="modules-field__label">
+                  {hasSelection ? "AI · selection" : "AI · whole text box"}
+                </span>
+                <div className="modules-panel__ai-grid">
+                  {(hasSelection ? SELECTION_AI_ACTIONS : TEXT_AI_ACTIONS)
+                    .filter((a) => a.mode !== "edit-selection")
+                    .map((action) => (
+                      <button
+                        key={action.mode + action.label}
+                        type="button"
+                        className="modules-btn modules-btn--secondary modules-panel__ai-btn"
+                        disabled={autofillBusy}
+                        title={action.description}
+                        onClick={() => onAutofill(action.mode)}
+                      >
+                        {action.label}
+                      </button>
+                    ))}
+                </div>
+              </div>
+
+              {hasSelection && (
+                <>
+                  <label className="modules-field">
+                    <span className="modules-field__label">AI edit selection</span>
+                    <textarea
+                      className="modules-field__input"
+                      rows={2}
+                      placeholder="e.g. Make this more reassuring, add OHIP context…"
+                      value={selectionPrompt}
+                      onChange={(e) => setSelectionPrompt(e.target.value)}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="modules-btn modules-btn--primary modules-panel__full-btn"
+                    disabled={autofillBusy || !selectionPrompt.trim()}
+                    onClick={() => {
+                      onAutofill("edit-selection", selectionPrompt.trim());
+                      setSelectionPrompt("");
+                    }}
+                  >
+                    {autofillBusy ? "Editing…" : "Apply to selection"}
+                  </button>
+                </>
+              )}
+
+              <label className="modules-field">
                 <span className="modules-field__label">Size ({selectedElement.fontSize}px)</span>
                 <input
                   type="range"
@@ -261,18 +384,6 @@ export function ElementPropertiesPanel({
                     </button>
                   ))}
                 </div>
-              </div>
-
-              <div className="modules-panel__btn-row">
-                <button type="button" className="modules-btn modules-btn--secondary" disabled={autofillBusy} onClick={() => onAutofill("rewrite")}>
-                  Rewrite
-                </button>
-                <button type="button" className="modules-btn modules-btn--secondary" disabled={autofillBusy} onClick={() => onAutofill("expand")}>
-                  Expand
-                </button>
-                <button type="button" className="modules-btn modules-btn--secondary" disabled={autofillBusy} onClick={() => onAutofill("shorten")}>
-                  Shorten
-                </button>
               </div>
             </>
           )}

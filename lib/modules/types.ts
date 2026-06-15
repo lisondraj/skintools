@@ -58,13 +58,30 @@ export interface Deck {
   updatedAt: number;
 }
 
-export type AutofillMode = "generate" | "rewrite" | "expand" | "shorten" | "slide";
+export type AutofillMode =
+  | "generate"
+  | "rewrite"
+  | "expand"
+  | "shorten"
+  | "slide"
+  | "edit-selection"
+  | "simplify"
+  | "clinical"
+  | "bullets"
+  | "grammar"
+  | "summarize"
+  | "notes";
 
 export interface AutofillReq {
   mode: AutofillMode;
   prompt?: string;
   existingText?: string;
+  /** Highlighted portion inside existingText to rewrite. */
+  selectedText?: string;
+  selectionStart?: number;
+  selectionEnd?: number;
   deckTitle?: string;
+  /** Rich slide + deck context for all AI calls. */
   slideContext?: string;
 }
 

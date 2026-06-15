@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SlideCanvas } from "@/components/modules/SlideCanvas";
 import { SlideThumbnails } from "@/components/modules/SlideThumbnails";
-import { ElementPropertiesPanel } from "@/components/modules/ElementPropertiesPanel";
+import { ElementPropertiesPanel, type TextSelectionInfo } from "@/components/modules/ElementPropertiesPanel";
 import { ImageLibrary } from "@/components/modules/ImageLibrary";
 import { PresentMode } from "@/components/modules/PresentMode";
 import { autofillSlide, autofillText } from "@/lib/modules/client";
@@ -32,6 +32,7 @@ import {
   updateSlide,
 } from "@/lib/modules/storage";
 import { buildSlideTemplate, type SlideTemplateId } from "@/lib/modules/templates";
+import { buildSlideAIContext } from "@/lib/modules/context";
 import type { AutofillMode, Deck, SlideElement } from "@/lib/modules/types";
 import { MODULES_STAGE_W } from "@/lib/modules/types";
 
@@ -43,6 +44,7 @@ export default function ModulesPage() {
   const [presenting, setPresenting] = useState(false);
   const [presentStartIndex, setPresentStartIndex] = useState(0);
   const [autofillBusy, setAutofillBusy] = useState(false);
+  const [textSelection, setTextSelection] = useState<TextSelectionInfo | null>(null);
   const [error, setError] = useState("");
   const importRef = useRef<HTMLInputElement>(null);
 
@@ -52,6 +54,18 @@ export default function ModulesPage() {
   }, []);
 
   const activeSlide = deck?.slides[activeIndex];
+
+  const getSlideContext = useCallback(
+    (selectedId?: string | null) => {
+      if (!deck) return "";
+      return buildSlideAIContext({
+        deck,
+        slideIndex: activeIndex,
+        selectedElementId: selectedId ?? selectedElementId,
+      });
+    },
+    [activeIndex, deck, selectedElementId],
+  );
 
   const refreshDeck = useCallback(() => setDeck(getDeck()), []);
 
@@ -137,16 +151,29 @@ export default function ModulesPage() {
   async function handleAutofill(mode: AutofillMode, prompt?: string) {
     if (!deck || !activeSlide || activeSlide.kind !== "content") return;
     const selected = activeSlide.elements.find((el) => el.id === selectedElementId);
+    const slideContext = getSlideContext();
+
     setAutofillBusy(true);
     setError("");
     try {
+      const useSelection =
+        selected?.kind === "text" &&
+        textSelection &&
+        textSelection.elementId === selected.id &&
+        textSelection.text.trim().length > 0 &&
+        mode !== "generate";
+
       const text = await autofillText({
         mode,
         prompt,
         existingText: selected?.kind === "text" ? selected.text : undefined,
+        selectedText: useSelection ? textSelection.text : undefined,
+        selectionStart: useSelection ? textSelection.start : undefined,
+        selectionEnd: useSelection ? textSelection.end : undefined,
         deckTitle: deck.title,
-        slideContext: `Slide ${activeIndex + 1}`,
+        slideContext,
       });
+
       if (mode === "generate") {
         const el = createTextElement(text, nextElementZ(activeSlide.elements));
         updateElements([...activeSlide.elements, el]);
@@ -157,9 +184,29 @@ export default function ModulesPage() {
             el.id === selected.id && el.kind === "text" ? { ...el, text } : el,
           ),
         );
+        setTextSelection(null);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Autofill failed.");
+    } finally {
+      setAutofillBusy(false);
+    }
+  }
+
+  async function handleGenerateNotes() {
+    if (!deck || !activeSlide || activeSlide.kind !== "content") return;
+    setAutofillBusy(true);
+    setError("");
+    try {
+      const notes = await autofillText({
+        mode: "notes",
+        deckTitle: deck.title,
+        slideContext: getSlideContext(),
+      });
+      const next = updateSlide(activeSlide.id, (slide) => ({ ...slide, notes }));
+      if (next) setDeck(next);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Notes generation failed.");
     } finally {
       setAutofillBusy(false);
     }
@@ -173,7 +220,7 @@ export default function ModulesPage() {
       const layout = await autofillSlide({
         prompt,
         deckTitle: deck.title,
-        slideContext: `Slide ${activeIndex + 1}`,
+        slideContext: getSlideContext(),
       });
       const title = createTextElement(layout.title, 1, {
         x: 80,
@@ -353,7 +400,7 @@ export default function ModulesPage() {
         <SlideThumbnails
           slides={deck.slides}
           activeIndex={activeIndex}
-          onSelect={(i) => { setActiveIndex(i); setSelectedElementId(null); }}
+          onSelect={(i) => { setActiveIndex(i); setSelectedElementId(null); setTextSelection(null); }}
           onAdd={(kind) => {
             const next = addSlide(kind);
             if (next) {
@@ -383,8 +430,12 @@ export default function ModulesPage() {
           <SlideCanvas
             slide={activeSlide}
             selectedElementId={selectedElementId}
-            onSelectElement={setSelectedElementId}
+            onSelectElement={(id) => {
+              setSelectedElementId(id);
+              setTextSelection(null);
+            }}
             onChangeElements={updateElements}
+            onTextSelection={setTextSelection}
             onChangeSim={(sim) => {
               const next = updateSimConfig(activeSlide.id, sim);
               if (next) setDeck(next);
@@ -397,6 +448,7 @@ export default function ModulesPage() {
           slideIndex={activeIndex}
           slideCount={deck.slides.length}
           selectedElement={selectedEl}
+          textSelection={textSelection}
           autofillBusy={autofillBusy}
           onUpdateText={(id, patch) => {
             updateElements(
@@ -431,6 +483,8 @@ export default function ModulesPage() {
           }}
           onAutofill={(mode, prompt) => void handleAutofill(mode, prompt)}
           onGenerateSlide={(prompt) => void handleGenerateSlide(prompt)}
+          onGenerateNotes={() => void handleGenerateNotes()}
+          onTextSelectionChange={setTextSelection}
           onDuplicateSlide={() => {
             const next = duplicateSlide(activeSlide.id);
             if (next) {
@@ -461,7 +515,7 @@ export default function ModulesPage() {
       <footer className="modules__statusbar">
         <span>
           {isContent
-            ? "← → slides · Arrow keys nudge · Delete removes · Double-click text to edit"
+            ? "← → slides · Highlight text for AI edit · Double-click canvas to edit"
             : "Configure the virtual patient in the canvas"}
         </span>
         <span>{deck.slides.length} slide{deck.slides.length === 1 ? "" : "s"}</span>
