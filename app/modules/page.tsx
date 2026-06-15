@@ -598,7 +598,7 @@ export default function ModulesPage() {
         />
         </div>
 
-        <main className={`modules__canvas-area${mobileTab === "canvas" ? " modules__mobile-panel is-active" : " modules__mobile-panel"}`} aria-hidden={mobileTab !== "canvas"}>
+        <main className="modules__canvas-area" data-mobile-hidden={mobileTab !== "canvas" ? "true" : undefined}>
           {isContent && (
             <div className="modules__mobile-tools">
               <button

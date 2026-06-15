@@ -2244,8 +2244,8 @@ select.modules-field__input {
   display: none;
 }
 
+/* On desktop the wrapper divs are transparent — they don't participate in layout */
 .modules__mobile-panel {
-  /* on desktop, panels always show — wrapper is transparent */
   display: contents;
 }
 
@@ -2349,7 +2349,7 @@ select.modules-field__input {
     grid-template-columns: none !important;
   }
 
-  /* All panels stacked; hide them by default */
+  /* Filmstrip + properties panel wrappers: hidden by default on mobile */
   .modules__mobile-panel {
     display: none;
     flex-direction: column;
@@ -2362,7 +2362,12 @@ select.modules-field__input {
     display: flex;
   }
 
-  /* Filmstrip panel: make it a horizontal slide list on mobile */
+  /* Canvas: hidden when another tab is active */
+  .modules__canvas-area[data-mobile-hidden="true"] {
+    display: none;
+  }
+
+  /* Filmstrip panel: scrollable */
   .modules__mobile-panel:has(.modules-filmstrip) {
     overflow-y: auto;
   }
