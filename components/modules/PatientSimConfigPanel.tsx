@@ -102,23 +102,31 @@ export function PatientSimConfigPanel({ sim, onChange }: Props) {
   );
 }
 
-export function PatientSimSlidePreview({ slide }: { slide: Slide }) {
+export function PatientSimSlidePreview({
+  slide,
+  presentMode = false,
+}: {
+  slide: Slide;
+  presentMode?: boolean;
+}) {
   const sim = slide.sim;
   const difficulty = DIFFICULTIES.find((d) => d.id === sim?.difficulty);
+  const minutes = getSimTimeLimitMinutes(sim ?? { persona: "", scenario: "", difficulty: "moderate" });
 
   return (
-    <div className="vsp-preview">
-      <div className="vsp-preview__orb" aria-hidden>
+    <div className={`vsp-preview${presentMode ? " vsp-preview--present" : ""}`}>
+      <div className="vsp-preview__visual" aria-hidden>
+        <span className="vsp-preview__orb-ring" />
         <span className="vsp-preview__orb-core" />
       </div>
       <span className="vsp-preview__badge">Virtual patient</span>
       <h3 className="vsp-preview__title">{sim?.persona || "Patient persona not set"}</h3>
       <p className="vsp-preview__scenario">{sim?.scenario || "Add a scenario in the editor."}</p>
-      {difficulty && (
-        <span className="vsp-preview__meta">
-          {difficulty.label} · {getSimTimeLimitMinutes(sim ?? { persona: "", scenario: "", difficulty: "moderate" })} min
-        </span>
-      )}
+      <div className="vsp-preview__tags">
+        {difficulty && <span className="vsp-preview__tag">{difficulty.label}</span>}
+        <span className="vsp-preview__tag">{minutes} min</span>
+        <span className="vsp-preview__tag">Push-to-talk</span>
+      </div>
     </div>
   );
 }

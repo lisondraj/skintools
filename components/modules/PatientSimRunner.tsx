@@ -19,6 +19,7 @@ type Props = {
   sim: PatientSimConfig;
   onEnd: () => void;
   autoStart?: boolean;
+  presentMode?: boolean;
 };
 
 function AudioBars({ level, active }: { level: number; active: boolean }) {
@@ -88,7 +89,7 @@ function disconnectMessage(details: DisconnectionDetails, connected: boolean): s
   return "";
 }
 
-export function PatientSimRunner({ sim, onEnd, autoStart = false }: Props) {
+export function PatientSimRunner({ sim, onEnd, autoStart = false, presentMode = false }: Props) {
   const [status, setStatus] = useState<SimStatus>("idle");
   const [error, setError] = useState("");
   const [micOpen, setMicOpen] = useState(false);
@@ -305,11 +306,14 @@ export function PatientSimRunner({ sim, onEnd, autoStart = false }: Props) {
   const timerLow = remainingSec <= 60;
 
   return (
-    <div className="vsp-runner">
+    <div className={`vsp-runner${presentMode ? " vsp-runner--present" : ""}`}>
       <header className="vsp-runner__header">
-        <div>
+        <div className="vsp-runner__header-main">
           <span className="vsp-runner__eyebrow">Virtual patient</span>
           <p className="vsp-runner__persona">{sim.persona}</p>
+          {presentMode && (
+            <p className="vsp-runner__scenario">{sim.scenario}</p>
+          )}
         </div>
         <div className="vsp-runner__meta">
           {isLive && (
@@ -324,7 +328,9 @@ export function PatientSimRunner({ sim, onEnd, autoStart = false }: Props) {
       </header>
 
       <div className="vsp-runner__stage">
-        <SpeakingOrb level={audioLevel} status={status} micOpen={micOpen} />
+        <div className={`vsp-runner__orb-wrap${status === "speaking" ? " is-speaking" : ""}${micOpen ? " is-mic-live" : ""}`}>
+          <SpeakingOrb level={audioLevel} status={status} micOpen={micOpen} />
+        </div>
         <AudioBars level={audioLevel} active={isLive} />
         <p className="vsp-runner__hint">
           {status === "idle" && "Start when you're ready to practice the consultation."}
@@ -348,18 +354,21 @@ export function PatientSimRunner({ sim, onEnd, autoStart = false }: Props) {
           </button>
         )}
         {isLive && (
-          <>
+          <div className="vsp-runner__live-actions">
             <button
               type="button"
-              className={`modules-btn vsp-runner__mic-btn${micOpen ? " is-live" : ""}`}
+              className={`vsp-runner__mic-btn${micOpen ? " is-live" : ""}`}
               onClick={toggleMic}
             >
+              <span className="vsp-runner__mic-icon" aria-hidden>
+                {micOpen ? "◉" : "○"}
+              </span>
               {micOpen ? "Mute — done speaking" : "Unmute to speak"}
             </button>
-            <button type="button" className="modules-btn modules-btn--secondary" onClick={() => finishSession(true)}>
+            <button type="button" className="vsp-runner__end-btn" onClick={() => finishSession(true)}>
               End session
             </button>
-          </>
+          </div>
         )}
         {status === "error" && (
           <>

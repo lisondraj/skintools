@@ -439,7 +439,7 @@ export default function ModulesPage() {
           </div>
         )}
 
-        <div className="modules__topbar-tools">
+        <div className="modules__topbar-actions">
           <button
             type="button"
             className="modules-action-btn"
