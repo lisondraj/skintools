@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Conversation } from "@11labs/client";
+import type { DisconnectionDetails } from "@11labs/client";
 import { createRealtimeSession } from "@/lib/modules/client";
 import type { PatientSimConfig } from "@/lib/modules/types";
 
@@ -65,6 +66,19 @@ function SpeakingOrb({ level, status }: { level: number; status: SimStatus }) {
   );
 }
 
+function disconnectMessage(details: DisconnectionDetails, connected: boolean): string {
+  if (details.reason === "error") {
+    return details.message || "Connection closed unexpectedly.";
+  }
+  if (details.reason === "agent" && !connected) {
+    return "The agent closed the session before connecting. In ElevenLabs → SkinTools agent → Security → Overrides, enable System prompt, First message, and Voice — or set the agent prompt to {{patient_instructions}} with that dynamic variable.";
+  }
+  if (details.reason === "agent") {
+    return "The patient ended the conversation.";
+  }
+  return "";
+}
+
 export function PatientSimRunner({ sim, onEnd, autoStart = false }: Props) {
   const [status, setStatus] = useState<SimStatus>("idle");
   const [error, setError] = useState("");
@@ -74,19 +88,27 @@ export function PatientSimRunner({ sim, onEnd, autoStart = false }: Props) {
 
   const convRef = useRef<Awaited<ReturnType<typeof Conversation.startSession>> | null>(null);
   const startedRef = useRef(false);
+  const sessionGenRef = useRef(0);
+  const connectedRef = useRef(false);
+  const connectTimeRef = useRef(0);
   const animFrameRef = useRef<number>(0);
   const transcriptRef = useRef<HTMLDivElement>(null);
 
-  const cleanup = useCallback(() => {
+  const cleanup = useCallback((endRemote = true) => {
     cancelAnimationFrame(animFrameRef.current);
-    if (convRef.current) {
+    if (endRemote && convRef.current) {
       void convRef.current.endSession();
       convRef.current = null;
     }
     setAudioLevel(0);
   }, []);
 
-  useEffect(() => () => cleanup(), [cleanup]);
+  useEffect(() => {
+    return () => {
+      sessionGenRef.current += 1;
+      cleanup();
+    };
+  }, [cleanup]);
 
   useEffect(() => {
     convRef.current?.setMicMuted(muted);
@@ -97,26 +119,55 @@ export function PatientSimRunner({ sim, onEnd, autoStart = false }: Props) {
   }, [transcript]);
 
   const start = useCallback(async () => {
+    const gen = ++sessionGenRef.current;
     setError("");
     setStatus("connecting");
+    connectedRef.current = false;
+    connectTimeRef.current = 0;
     startedRef.current = true;
 
     try {
       const session = await createRealtimeSession({ sim });
+      if (gen !== sessionGenRef.current) return;
 
+      // Only override fields enabled on the SkinTools agent (first_message, voice_id).
+      // Prompt is injected via sendContextualUpdate — sending a disabled prompt override
+      // causes ElevenLabs to end the session immediately.
       const conv = await Conversation.startSession({
         signedUrl: session.signedUrl,
+        connectionType: "websocket",
         overrides: {
           agent: {
-            prompt: { prompt: session.instructions },
-            firstMessage: "Hello. I'm ready when you are. What would you like to know?",
+            firstMessage: "Hello doctor — I'm a bit nervous, but I'm ready to talk. Where should we start?",
           },
           tts: { voiceId: session.voiceId },
         },
-        onConnect: () => setStatus("listening"),
-        onDisconnect: () => {
-          setStatus("ended");
+        dynamicVariables: {
+          persona: sim.persona,
+          scenario: sim.scenario,
+          difficulty: sim.difficulty,
+          patient_instructions: session.instructions,
+        },
+        onConnect: () => {
+          connectedRef.current = true;
+          connectTimeRef.current = Date.now();
+          setStatus("listening");
+        },
+        onDisconnect: (details) => {
+          const wasConnected = connectedRef.current;
+          const duration = wasConnected ? Date.now() - connectTimeRef.current : 0;
+          connectedRef.current = false;
+          convRef.current = null;
           setAudioLevel(0);
+
+          const abrupt = !wasConnected || duration < 2500;
+          if (details.reason === "error" || (details.reason === "agent" && abrupt)) {
+            setError(disconnectMessage(details, wasConnected));
+            setStatus("error");
+            return;
+          }
+
+          setStatus("ended");
         },
         onError: (message: string) => {
           setError(message || "Connection error.");
@@ -133,9 +184,16 @@ export function PatientSimRunner({ sim, onEnd, autoStart = false }: Props) {
         },
       });
 
+      if (gen !== sessionGenRef.current) {
+        void conv.endSession();
+        return;
+      }
+
+      conv.sendContextualUpdate(session.instructions);
       convRef.current = conv;
 
       function tick() {
+        if (!convRef.current) return;
         const vol = conv.getInputVolume?.() ?? 0;
         const agentVol = conv.getOutputVolume?.() ?? 0;
         setAudioLevel(Number(Math.max(vol, agentVol).toFixed(3)));
@@ -143,7 +201,8 @@ export function PatientSimRunner({ sim, onEnd, autoStart = false }: Props) {
       }
       animFrameRef.current = requestAnimationFrame(tick);
     } catch (err) {
-      cleanup();
+      if (gen !== sessionGenRef.current) return;
+      cleanup(false);
       setStatus("error");
       setError(err instanceof Error ? err.message : "Could not start simulation.");
     }
@@ -154,7 +213,9 @@ export function PatientSimRunner({ sim, onEnd, autoStart = false }: Props) {
   }, [autoStart, start]);
 
   function handleEnd() {
+    sessionGenRef.current += 1;
     cleanup();
+    connectedRef.current = false;
     setStatus("ended");
     onEnd();
   }
