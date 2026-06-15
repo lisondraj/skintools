@@ -24,6 +24,11 @@ const TOOLS = [
     href: "/modules",
     meta: "Slides + virtual patient voice sim",
   },
+  {
+    name: "Virtual Patient",
+    href: "/vsp",
+    meta: "Voice encounter practice + transcript",
+  },
 ] as const;
 
 const SPACES = [
