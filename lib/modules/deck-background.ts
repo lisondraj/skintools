@@ -20,40 +20,27 @@ function summarizeSlideContent(slide: GeneratedDeckSlide): string {
   return `${combined.slice(0, MAX_CONTEXT_CHARS).trim()}…`;
 }
 
-/** GPT Image 2 prompt for a full-slide background tied to slide copy. */
-export function buildContextualBackgroundPrompt(slide: GeneratedDeckSlide): string {
-  const summary = summarizeSlideContent(slide);
-  const custom = slide.backgroundImagePrompt?.trim();
-
-  const theme = custom
-    ? custom
-    : `Visual theme related to: ${summary}`;
-
-  return [
-    `Dermatology presentation slide background for "${slide.title}".`,
-    `Slide topic and content: ${summary}.`,
-    theme,
-    "16:9 widescreen, professional medical aesthetic, soft gradients or abstract clinical imagery.",
-    "Subtle and light enough for dark or light text overlay — avoid busy patterns in the center.",
-    "No text, no labels, no watermarks, no logos.",
-  ].join(" ");
+/** Unused — AI backgrounds are disabled. Kept as stub to avoid import errors. */
+export function buildContextualBackgroundPrompt(_slide: GeneratedDeckSlide): string {
+  return "";
 }
 
 /** Inline illustration prompt enriched with slide text context. */
 export function buildContextualInlineImagePrompt(slide: GeneratedDeckSlide): string {
   const summary = summarizeSlideContent(slide);
-  const subject = slide.imagePrompt?.trim() || `Illustration supporting "${slide.title}"`;
+  const subject = slide.imagePrompt?.trim() || `Clinical illustration for "${slide.title}"`;
 
   return [
     subject,
-    `Must align with slide content: ${summary}.`,
-    "Clean clinical dermatology educational style for a presentation slide.",
+    `Topic context: ${summary}.`,
+    "Clean, professional medical education illustration style.",
+    "White or very light background. No text, no labels, no watermarks, no captions, no UI elements.",
+    "Suitable for a dermatology presentation slide — portrait orientation.",
   ].join(" ");
 }
 
-export function shouldGenerateAiBackground(slide: GeneratedDeckSlide): boolean {
-  if (slide.backgroundStyle === "ai") return true;
-  if (slide.layout === "image-hero") return true;
+// AI backgrounds are disabled — always use solid colours from deck-builder.
+export function shouldGenerateAiBackground(_slide: GeneratedDeckSlide): boolean {
   return false;
 }
 

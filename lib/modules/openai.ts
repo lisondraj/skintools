@@ -1,6 +1,5 @@
 import { getOpenAiKey } from "@/lib/skinlog/env";
 import { normalizeGeneratedSlide } from "./deck-builder";
-import { SLIDE_FONT_STYLES } from "./fonts";
 import { buildVisionUserContent } from "./openai-vision";
 import {
   SLIDE_CONTENT_STYLE_GUIDE,
@@ -176,8 +175,6 @@ export async function autofillSlideLayout(options: {
   const key = getOpenAiKey();
   if (!key) throw new Error("OpenAI API key not configured.");
 
-  const fontIds = SLIDE_FONT_STYLES.map((f) => f.id).join(", ");
-
   const contextBlock = options.slideContext?.trim()
     ? `\n\n--- Slide & deck context ---\n${options.slideContext.trim()}\n--- End context ---`
     : "";
@@ -192,21 +189,29 @@ ${SLIDE_CONTENT_STYLE_GUIDE}
 
 ${SLIDE_LAYOUT_PICK_GUIDE}
 
-Typography: pick titleFontStyle and bodyFontStyle from (${fontIds}). Vary titleFontSize (28–44) and bodyFontSize (18–22). Set background to a soft hex (#ffffff, #f8fafc, #eef2ff, #fef3c7).
+Typography rules:
+- Font is ALWAYS Inter — do NOT choose a font, leave titleFontStyle/bodyFontStyle as "inter".
+- titleFontSize: 30–40. bodyFontSize: 18–22.
+- background: a clean soft hex only (#ffffff, #f8fafc, #eef2ff, #fef3c7, #ecfdf5, #fff7ed).
+
+Content length rules (CRITICAL — text boxes must not overflow):
+- body for title-body/bullets: max 600 characters. Use 4–6 bullets or 2–3 short paragraphs.
+- leftBody / rightBody for two-column: max 300 characters each (3–5 bullets).
+- body for image-right/image-left: max 350 characters (3–4 short bullets or 2 sentences).
 
 Return JSON only:
 {
   "title": "slide title",
-  "body": "rich body — sections, paragraphs, 5–9 bullets as needed",
+  "body": "body text — keep within the character limits above",
   "leftBody": "only if layout is two-column",
   "rightBody": "only if layout is two-column",
   "notes": "3–4 sentence speaker notes with extra detail not on the slide",
   "layout": "title-body | bullets | two-column | image-right | image-left",
   "background": "#hex",
-  "imagePrompt": "if image-right/image-left — clinical illustration description",
-  "titleFontStyle": "font id",
-  "bodyFontStyle": "font id",
-  "titleFontSize": 36,
+  "imagePrompt": "if image-right/image-left — clinical illustration description, no text in image",
+  "titleFontStyle": "inter",
+  "bodyFontStyle": "inter",
+  "titleFontSize": 34,
   "bodyFontSize": 20,
   "titleColor": "#111111",
   "bodyColor": "#374151",
@@ -284,13 +289,12 @@ export async function autofillDeck(options: {
   if (!key) throw new Error("OpenAI API key not configured.");
 
   const count = Math.min(Math.max(options.slideCount ?? 6, 3), 12);
-  const fontIds = SLIDE_FONT_STYLES.map((f) => f.id).join(", ");
 
   const contextBlock = options.slideContext?.trim()
     ? `\n\n--- Existing deck context ---\n${options.slideContext.trim()}\n--- End context ---`
     : "";
 
-  const userPrompt = `Create a complete dermatology presentation deck with varied visual design and substantive content.
+  const userPrompt = `Create a complete dermatology presentation deck with varied layouts and clean, concise content.
 
 Topic: ${options.prompt.trim()}
 Number of slides: ${count}
@@ -299,26 +303,33 @@ ${contextBlock}
 
 ${SLIDE_CONTENT_STYLE_GUIDE}
 
-Design rules:
-- First slide: layout "title" (large centered title + optional subtitle in body). Use titleFontSize 48-56, titleFontStyle "playfair" or "merriweather".
-- Last slide: layout "title" or "bullets" for key takeaways (5–7 takeaway bullets, not 3).
-- Vary layouts across slides: use at least 4 different layouts from the list below.
-- Use at least 2 slides with layout "image-right" or "image-left" and a detailed imagePrompt (clinical illustration tied to that slide's title and body).
-- Use 1 slide with layout "image-hero" (dramatic full-bleed background with title overlay).
-- Use "two-column" for comparing topics (leftBody and rightBody with 4–6 • bullets each).
-- Use "title-body" for narrative slides mixing paragraphs and bullets; use "bullets" with ## section breaks for list-heavy slides.
-- Alternate content density: some slides narrative-heavy, some sectioned lists, some comparison columns.
-- Vary titleFontStyle and bodyFontStyle across slides (choose from: ${fontIds}). Do not use the same font on every slide.
-- Vary titleFontSize (28-52) and bodyFontSize (18-24) appropriately per layout.
-- Speaker notes should add detail beyond what's on the slide (3–4 sentences).
+Typography rules (apply to every slide):
+- Font is ALWAYS Inter — set titleFontStyle and bodyFontStyle to "inter" for every slide.
+- titleFontSize: 30–44 (use 44–52 only for the title slide). bodyFontSize: 18–22.
 
-Slide background design (backgroundStyle — vary across the deck):
-- "white" — clean #ffffff, no image. Good for dense text slides. Use dark titleColor/bodyColor (#111111, #374151).
-- "solid" — soft hex in background field (#f8fafc, #eef2ff, #fef3c7, #ecfdf5, #ffffff). No backgroundImagePrompt.
-- "ai" — GPT Image 2 generates a full 16:9 slide background. REQUIRED: backgroundImagePrompt describing visuals that match THIS slide's title and body (e.g. for a slide about melanoma ABCDE, prompt "soft abstract dermoscopy patterns and sun safety motifs"). Use light text (titleColor #ffffff or #f8fafc, bodyColor #e2e8f0) when the background may be darker.
-- Use backgroundStyle "ai" on 3–5 slides (title slide, image-hero, and 1–2 key content slides). Remaining slides: mix "white" and "solid".
-- Do NOT use ai backgrounds on every slide — alternate for readability and generation time.
-- imagePrompt and backgroundImagePrompt must reference specific content from that slide's title/body, not generic dermatology stock art.
+Layout rules:
+- First slide: layout "title" (large centered title + short subtitle). titleFontSize 48.
+- Last slide: layout "bullets" for key takeaways.
+- Vary layouts: use at least 4 different types from the list below.
+- Use 1–2 slides with "image-right" or "image-left" with a detailed imagePrompt (no text in the illustration).
+- Use "two-column" for comparisons (leftBody and rightBody).
+- Use "title-body" for narrative/paragraph slides; "bullets" for list-heavy slides.
+
+Content length rules (CRITICAL — text boxes have fixed height; overflow is hidden):
+- body for title-body/bullets: max 550 characters. Use 4–6 bullets or 2–3 short paragraphs.
+- leftBody / rightBody for two-column: max 280 characters each (3–5 short bullets).
+- body for image-right/image-left: max 320 characters (3–4 bullets or 2 short sentences).
+- title slide body (subtitle): max 120 characters.
+- Prefer fewer, clearer bullets over cramming more text in.
+
+Background rules (backgroundStyle):
+- Use only "white" or "solid" — do NOT use "ai" backgrounds.
+- "white" — #ffffff. Good for dense text slides.
+- "solid" — a soft, tasteful hex (#f8fafc, #eef2ff, #fef3c7, #ecfdf5, #fff7ed, #f0fdf4).
+- Mix backgrounds across the deck for variety. Always use dark text (#111111, #374151).
+
+Image rules:
+- imagePrompt for image-right/image-left: describe a clean clinical illustration with NO text, NO labels, NO watermarks. Real medical education style, white or transparent background preferred.
 
 Return JSON only:
 {
@@ -326,22 +337,21 @@ Return JSON only:
   "slides": [
     {
       "title": "slide title",
-      "body": "rich body — ## sections, paragraphs, 5–9 bullets; NOT label-colon fragments",
-      "leftBody": "only for two-column — 4–6 bullets",
-      "rightBody": "only for two-column — 4–6 bullets",
-      "notes": "3–4 sentence speaker notes with extra clinical detail",
+      "body": "concise body — within character limits above",
+      "leftBody": "only for two-column — 3–5 short bullets",
+      "rightBody": "only for two-column — 3–5 short bullets",
+      "notes": "3–4 sentence speaker notes with clinical detail not on the slide",
       "layout": "title | title-body | bullets | two-column | image-right | image-left | image-hero",
-      "backgroundStyle": "white | solid | ai",
-      "background": "#hex — used for solid/white; fallback tint if ai gen fails",
-      "backgroundImagePrompt": "required when backgroundStyle is ai — describe background visuals matching this slide's topic",
-      "imagePrompt": "required for image-right/image-left — illustration matching slide content",
-      "titleFontStyle": "font id",
-      "bodyFontStyle": "font id",
-      "titleFontSize": 36,
-      "bodyFontSize": 22,
+      "backgroundStyle": "white | solid",
+      "background": "#hex",
+      "imagePrompt": "required for image-right/image-left — illustration, no text in image",
+      "titleFontStyle": "inter",
+      "bodyFontStyle": "inter",
+      "titleFontSize": 34,
+      "bodyFontSize": 20,
       "titleColor": "#111111",
       "bodyColor": "#374151",
-      "titleAlign": "left | center | right"
+      "titleAlign": "left | center"
     }
   ]
 }`;
