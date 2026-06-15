@@ -26,7 +26,6 @@ type Props = {
   onUpdateText: (id: string, patch: Partial<TextElement>) => void;
   onUpdateShape: (id: string, patch: Partial<ShapeElement>) => void;
   onUpdateBackground: (background: string) => void;
-  onUpdateNotes: (notes: string) => void;
   onApplyTemplate: (templateId: SlideTemplateId) => void;
   onDeleteElement: () => void;
   onDuplicateElement: () => void;
@@ -34,7 +33,6 @@ type Props = {
   onSendBackward: () => void;
   onAutofill: (mode: AutofillMode, prompt?: string) => void;
   onGenerateSlide: (prompt: string) => void;
-  onGenerateNotes: () => void;
   onGenerateBackground: (prompt: string) => void;
   onTextSelectionChange: (info: TextSelectionInfo | null) => void;
   onDuplicateSlide: () => void;
@@ -54,7 +52,6 @@ export function ElementPropertiesPanel({
   onUpdateText,
   onUpdateShape,
   onUpdateBackground,
-  onUpdateNotes,
   onApplyTemplate,
   onDeleteElement,
   onDuplicateElement,
@@ -62,7 +59,6 @@ export function ElementPropertiesPanel({
   onSendBackward,
   onAutofill,
   onGenerateSlide,
-  onGenerateNotes,
   onGenerateBackground,
   onTextSelectionChange,
   onDuplicateSlide,
@@ -192,27 +188,6 @@ export function ElementPropertiesPanel({
               </select>
             </label>
           </>
-        )}
-
-        <label className="modules-field">
-          <span className="modules-field__label">Speaker notes</span>
-          <textarea
-            className="modules-field__input"
-            rows={3}
-            placeholder="Notes visible only to you during editing…"
-            value={slide.notes ?? ""}
-            onChange={(e) => onUpdateNotes(e.target.value)}
-          />
-        </label>
-        {isContent && (
-          <button
-            type="button"
-            className="modules-btn modules-btn--secondary modules-panel__full-btn"
-            disabled={autofillBusy}
-            onClick={onGenerateNotes}
-          >
-            {autofillBusy ? "Working…" : "AI generate notes"}
-          </button>
         )}
 
         <div className="modules-panel__btn-row">

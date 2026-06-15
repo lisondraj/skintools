@@ -8,6 +8,7 @@ import { ElementPropertiesPanel, type TextSelectionInfo } from "@/components/mod
 import { ImageLibrary } from "@/components/modules/ImageLibrary";
 import { DeckGeneratorModal } from "@/components/modules/DeckGeneratorModal";
 import { PresentMode } from "@/components/modules/PresentMode";
+import { SpeakerNotesBar } from "@/components/modules/SpeakerNotesBar";
 import { autofillSlide, autofillText, generateDeck, generateSlideImage } from "@/lib/modules/client";
 import {
   clampElement,
@@ -51,6 +52,7 @@ export default function ModulesPage() {
   const [autofillBusy, setAutofillBusy] = useState(false);
   const [textSelection, setTextSelection] = useState<TextSelectionInfo | null>(null);
   const [error, setError] = useState("");
+  const [notesOpen, setNotesOpen] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -221,6 +223,7 @@ export default function ModulesPage() {
       });
       const next = updateSlide(activeSlide.id, (slide) => ({ ...slide, notes }));
       if (next) setDeck(next);
+      setNotesOpen(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Notes generation failed.");
     } finally {
@@ -248,6 +251,7 @@ export default function ModulesPage() {
       }));
       if (next) setDeck(next);
       setSelectedElementId(result.elements[0]?.id ?? null);
+      if (result.notes?.trim()) setNotesOpen(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Slide generation failed.");
     } finally {
@@ -511,26 +515,34 @@ export default function ModulesPage() {
         />
 
         <main className="modules__canvas-area">
-          {activeSlide.notes && (
-            <div className="modules__notes-preview" aria-label="Speaker notes">
-              <span className="modules__notes-label">Notes</span>
-              {activeSlide.notes}
-            </div>
-          )}
-          <SlideCanvas
-            slide={activeSlide}
-            selectedElementId={selectedElementId}
-            onSelectElement={(id) => {
-              setSelectedElementId(id);
-              setTextSelection(null);
-            }}
-            onChangeElements={updateElements}
-            onTextSelection={setTextSelection}
-            onChangeSim={(sim) => {
-              const next = updateSimConfig(activeSlide.id, sim);
-              if (next) setDeck(next);
-            }}
-          />
+          <div className="modules__slide-column">
+            <SlideCanvas
+              slide={activeSlide}
+              selectedElementId={selectedElementId}
+              onSelectElement={(id) => {
+                setSelectedElementId(id);
+                setTextSelection(null);
+              }}
+              onChangeElements={updateElements}
+              onTextSelection={setTextSelection}
+              onChangeSim={(sim) => {
+                const next = updateSimConfig(activeSlide.id, sim);
+                if (next) setDeck(next);
+              }}
+            />
+            <SpeakerNotesBar
+              notes={activeSlide.notes ?? ""}
+              open={notesOpen}
+              busy={autofillBusy}
+              canGenerate={isContent}
+              onToggle={() => setNotesOpen((open) => !open)}
+              onUpdateNotes={(notes) => {
+                const next = updateSlide(activeSlide.id, (slide) => ({ ...slide, notes }));
+                if (next) setDeck(next);
+              }}
+              onGenerateNotes={() => void handleGenerateNotes()}
+            />
+          </div>
         </main>
 
         <ElementPropertiesPanel
@@ -558,10 +570,6 @@ export default function ModulesPage() {
             const next = updateSlide(activeSlide.id, (slide) => ({ ...slide, background }));
             if (next) setDeck(next);
           }}
-          onUpdateNotes={(notes) => {
-            const next = updateSlide(activeSlide.id, (slide) => ({ ...slide, notes }));
-            if (next) setDeck(next);
-          }}
           onApplyTemplate={handleApplyTemplate}
           onDeleteElement={handleDeleteElement}
           onDuplicateElement={() => {
@@ -580,7 +588,6 @@ export default function ModulesPage() {
           }}
           onAutofill={(mode, prompt) => void handleAutofill(mode, prompt)}
           onGenerateSlide={(prompt) => void handleGenerateSlide(prompt)}
-          onGenerateNotes={() => void handleGenerateNotes()}
           onGenerateBackground={(prompt) => void handleGenerateBackground(prompt)}
           onTextSelectionChange={setTextSelection}
           onDuplicateSlide={() => {
