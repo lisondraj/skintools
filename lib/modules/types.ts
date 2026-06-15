@@ -173,7 +173,7 @@ export interface GeneratedDeckSlide {
   rightBody?: string;
   notes?: string;
   layout: GeneratedSlideLayout;
-  /** white = #ffffff; solid = soft hex in background; ai = GPT Image 2 full-slide background. */
+  /** solid = neutral flat backdrop; ai = GPT Image 2 full-slide background. */
   backgroundStyle?: GeneratedSlideBackgroundStyle;
   background?: string;
   /** Describe AI background visuals — must relate to slide title/body when backgroundStyle is ai. */

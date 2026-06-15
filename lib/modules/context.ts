@@ -93,6 +93,15 @@ export function buildSlideAIContext(options: {
     `Slide type: ${slide.kind === "patient-sim" ? "virtual patient simulation" : "content"}`,
   ];
 
+  const currentSummary = slideTextSummary(slide, 320);
+  if (currentSummary !== "(empty slide)") {
+    lines.push(`Current slide content summary: ${currentSummary}`);
+  } else {
+    lines.push(
+      "Current slide content: (empty or minimal — align new copy with presentation title and neighbouring slides)",
+    );
+  }
+
   if (slideIndex > 0) {
     lines.push(`Previous slide (${slideIndex}): ${slideTextSummary(deck.slides[slideIndex - 1], 180)}`);
   }

@@ -58,7 +58,8 @@ function normalizeColor(value: unknown, fallback: string): string {
 }
 
 function normalizeBackgroundStyle(value: unknown): GeneratedSlideBackgroundStyle {
-  if (value === "white" || value === "solid" || value === "ai") return value;
+  if (value === "ai") return "ai";
+  // "white" and unknown values → solid (no white backdrop rule in prompts).
   return "solid";
 }
 
@@ -74,8 +75,8 @@ export function normalizeGeneratedSlide(raw: Partial<GeneratedDeckSlide>): Gener
     notes: raw.notes != null ? String(raw.notes).trim() : undefined,
     layout,
     backgroundStyle,
-    // Solid/fallback background hex.
-    background: normalizeColor(raw.background, "#f8fafc"),
+    // Ignore AI-suggested hex — app uses a neutral default for solid slides.
+    background: "#f4f4f5",
     backgroundImagePrompt:
       typeof raw.backgroundImagePrompt === "string" ? raw.backgroundImagePrompt.trim() : undefined,
     imagePrompt: typeof raw.imagePrompt === "string" ? raw.imagePrompt.trim() : undefined,
@@ -593,11 +594,11 @@ export function buildSlideFromGenerated(
   const slide = createEmptySlide("content");
   slide.notes = s.notes;
 
-  // AI-generated background image takes priority; fall back to solid hex.
+  // AI-generated background image takes priority; solid slides use neutral default.
   if (assets.backgroundImage) {
     slide.background = assets.backgroundImage;
   } else {
-    slide.background = s.background ?? "#f8fafc";
+    slide.background = s.background ?? "#f4f4f5";
   }
 
   switch (s.layout) {

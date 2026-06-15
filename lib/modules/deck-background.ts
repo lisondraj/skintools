@@ -1,63 +1,58 @@
 import type { GeneratedDeckSlide } from "./types";
 
-const MAX_CONTEXT_CHARS = 300;
+const MAX_INLINE_CONTEXT_CHARS = 520;
+const MAX_BG_CONTEXT_CHARS = 360;
 
-function summarizeSlideContent(slide: GeneratedDeckSlide): string {
-  const chunks: string[] = [];
-  if (slide.title?.trim()) chunks.push(slide.title.trim());
-  if (slide.body?.trim()) chunks.push(slide.body.trim());
-  if (slide.leftBody?.trim()) chunks.push(slide.leftBody.trim());
-  if (slide.rightBody?.trim()) chunks.push(slide.rightBody.trim());
-
-  const combined = chunks
-    .join(" ")
+function stripMarkdown(text: string): string {
+  return text
     .replace(/\*\*/g, "")
     .replace(/#{1,2}\s/g, "")
     .replace(/\s+/g, " ")
     .trim();
-
-  if (combined.length <= MAX_CONTEXT_CHARS) return combined;
-  return `${combined.slice(0, MAX_CONTEXT_CHARS).trim()}…`;
 }
 
-/**
- * GPT Image 2 prompt for a full-slide background.
- *
- * Key requirements:
- * - Very light / pale — dark text (#111) must remain legible over it
- * - Abstract / non-representational — no people, no faces, no stock photos
- * - Subtle enough to read text in front of; not the visual focus
- * - Thematically consistent with the slide topic
- */
-export function buildContextualBackgroundPrompt(slide: GeneratedDeckSlide): string {
-  const summary = summarizeSlideContent(slide);
-  const custom = slide.backgroundImagePrompt?.trim();
+/** Rich summary of slide copy for image generation prompts. */
+function summarizeSlideContent(slide: GeneratedDeckSlide, maxChars: number): string {
+  const chunks: string[] = [];
+  if (slide.title?.trim()) chunks.push(`Title: ${slide.title.trim()}`);
+  if (slide.body?.trim()) chunks.push(`Body: ${stripMarkdown(slide.body)}`);
+  if (slide.leftBody?.trim()) chunks.push(`Left: ${stripMarkdown(slide.leftBody)}`);
+  if (slide.rightBody?.trim()) chunks.push(`Right: ${stripMarkdown(slide.rightBody)}`);
 
-  const themeHint = custom
-    ? custom
-    : `abstract motifs inspired by: ${summary}`;
+  const combined = chunks.join(" | ");
+  if (combined.length <= maxChars) return combined;
+  return `${combined.slice(0, maxChars).trim()}…`;
+}
+
+/** GPT Image 2 prompt for a full-slide background tied to slide copy. */
+export function buildContextualBackgroundPrompt(slide: GeneratedDeckSlide): string {
+  const summary = summarizeSlideContent(slide, MAX_BG_CONTEXT_CHARS);
+  const custom = slide.backgroundImagePrompt?.trim();
+  const themeHint = custom || `modern visual theme inspired by the slide content`;
 
   return [
-    `Very light, pale, almost-white abstract background for a medical presentation slide.`,
-    `Theme: ${themeHint}.`,
-    `Style: soft watercolor wash or subtle geometric pattern, muted pastel tones (whites, light blues, light greens, or warm creams).`,
-    `Must be predominantly light/pale so that black or very dark text is highly legible on top.`,
-    `Abstract and non-representational — absolutely no people, no faces, no recognisable medical equipment, no stock photography, no text, no labels, no watermarks, no logos.`,
-    `Wide 16:9 composition. Edges may carry gentle colour; the centre should remain clean and uncluttered to leave room for slide text.`,
-    `Professional, refined, tasteful. Think subtle paper texture or soft gradient bleed, not a busy illustration.`,
+    `Modern full-slide background for a dermatology presentation.`,
+    `Slide content: ${summary}.`,
+    `Visual direction: ${themeHint}.`,
+    `Style: contemporary, clean, editorial — subtle abstract shapes, soft gradients, or refined clinical motifs.`,
+    `Keep the centre relatively open so dark slide text remains readable.`,
+    `No people, no faces, no stock photography, no text, no labels, no watermarks, no logos.`,
+    `Wide 16:9 composition.`,
   ].join(" ");
 }
 
-/** Inline illustration prompt enriched with slide text context. */
+/** Inline illustration prompt enriched with slide title and body so the image matches the copy. */
 export function buildContextualInlineImagePrompt(slide: GeneratedDeckSlide): string {
-  const summary = summarizeSlideContent(slide);
+  const summary = summarizeSlideContent(slide, MAX_INLINE_CONTEXT_CHARS);
   const subject = slide.imagePrompt?.trim() || `Clinical illustration for "${slide.title}"`;
 
   return [
-    subject,
-    `Topic context: ${summary}.`,
-    `Style: clean, professional medical-education illustration.`,
-    `White or very light neutral background — no gradients or textures behind the subject.`,
+    `Create an illustration that directly supports this presentation slide.`,
+    `Slide content: ${summary}.`,
+    `Illustration brief: ${subject}.`,
+    `The image MUST depict the same condition, anatomy, procedure, or counselling point described in the slide text — not a generic dermatology stock image.`,
+    `Modern, clean medical-education illustration style.`,
+    `Neutral or transparent background behind the subject.`,
     `Absolutely no text, no labels, no captions, no watermarks, no UI elements, no annotations in the image.`,
     `Portrait orientation, suitable for a presentation slide panel.`,
   ].join(" ");

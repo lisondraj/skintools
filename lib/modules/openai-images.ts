@@ -15,7 +15,7 @@ function buildPrompt(userPrompt: string, purpose: SlideImagePurpose): string {
   const base = userPrompt.trim();
   switch (purpose) {
     case "background":
-      return `Presentation slide background, 16:9 landscape, subtle and clean, professional dermatology medical theme. ${base}. Soft gradients or abstract textures. No text, no labels, no watermarks. Suitable as a backdrop with text overlay.`;
+      return `Modern presentation slide background, 16:9 landscape, clean dermatology theme. ${base}. Contemporary, refined visual design. No text, no labels, no watermarks. Suitable as a backdrop with dark text overlay.`;
     case "infographic":
       return `Clinical dermatology infographic illustration for patient education. ${base}. Clean flat design, professional medical style. Minimal text only if essential. No watermarks.`;
     default:

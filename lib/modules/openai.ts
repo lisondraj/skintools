@@ -2,6 +2,7 @@ import { getOpenAiKey } from "@/lib/skinlog/env";
 import { normalizeGeneratedSlide } from "./deck-builder";
 import { buildVisionUserContent } from "./openai-vision";
 import {
+  SLIDE_BACKGROUND_GUIDE,
   SLIDE_CONTENT_STYLE_GUIDE,
   SLIDE_INLINE_IMAGE_GUIDE,
   SLIDE_LAYOUT_PICK_GUIDE,
@@ -180,11 +181,13 @@ export async function autofillSlideLayout(options: {
     ? `\n\n--- Slide & deck context ---\n${options.slideContext.trim()}\n--- End context ---`
     : "";
 
-  const userPrompt = `Design one dermatology presentation slide with varied layout and rich content.
+  const userPrompt = `Design one modern dermatology presentation slide with varied layout and rich content.
 
 Topic/prompt: ${options.prompt.trim()}
 Presentation title: ${options.deckTitle?.trim() || "(untitled)"}
 ${contextBlock}
+
+Use the topic, presentation title, and any slide/deck context above when choosing layout, copy, backdrop theme, and imagePrompt — stay consistent with neighbouring slides when context is provided.
 
 ${SLIDE_CONTENT_STYLE_GUIDE}
 
@@ -192,16 +195,12 @@ ${SLIDE_LAYOUT_PICK_GUIDE}
 
 ${SLIDE_INLINE_IMAGE_GUIDE}
 
+${SLIDE_BACKGROUND_GUIDE}
+
 Typography rules:
 - Font is ALWAYS Inter — set titleFontStyle/bodyFontStyle to "inter".
 - titleFontSize: 30–40. bodyFontSize: 18–22.
-- titleColor and bodyColor are ALWAYS "#111111" and "#374151" (black text — backgrounds are light).
-
-Background rules:
-- backgroundStyle "white" — plain #ffffff.
-- backgroundStyle "solid" — soft hex (#f8fafc, #eef2ff, #fef3c7, #ecfdf5, #fff7ed).
-- backgroundStyle "ai" — GPT generates an abstract pale background image. Provide backgroundImagePrompt: a brief description of the abstract visual theme that matches this slide (e.g. "soft watercolor wash in warm coral tones", "subtle geometric skin-cell pattern in pale blue"). The background will be very light so dark text stays readable.
-- Do NOT use backgroundStyle "ai" when imagePrompt is set on the same slide.
+- titleColor and bodyColor are ALWAYS "#111111" and "#374151".
 
 Return JSON only:
 {
@@ -211,10 +210,9 @@ Return JSON only:
   "rightBody": "only if layout is two-column",
   "notes": "3–4 sentence speaker notes with extra detail not on the slide",
   "layout": "title-body | bullets | two-column | image-right | image-left",
-  "backgroundStyle": "white | solid | ai",
-  "background": "#hex (fallback if ai generation fails)",
-  "backgroundImagePrompt": "only for ai backgrounds — brief abstract theme description",
-  "imagePrompt": "for image-right/image-left (required) or optional accent on title-body/bullets — clinical illustration, no text in image",
+  "backgroundStyle": "solid | ai",
+  "backgroundImagePrompt": "only when backgroundStyle is ai — modern theme tied to this slide's title and body",
+  "imagePrompt": "required for image-right/image-left; optional accent on title-body/bullets — must reference specific concepts from title/body; no text in image",
   "titleFontStyle": "inter",
   "bodyFontStyle": "inter",
   "titleFontSize": 34,
@@ -238,7 +236,7 @@ Return JSON only:
         {
           role: "system",
           content:
-            "You design substantive dermatology slides for Ontario clinics. Avoid repetitive bullet templates. Use varied structure and depth. Generate inline illustration vectors via image-right/image-left layouts or optional imagePrompt on text layouts; AI backgrounds are separate pale backdrops. When slide images are attached, align content with visuals. Return valid JSON only.",
+            "You design modern, substantive dermatology slides for Ontario clinics. Avoid repetitive bullet templates. Use varied structure and depth. Inline illustration vectors (image-right/image-left or imagePrompt) must visually match the specific slide copy you write. AI backdrops are separate full-slide backgrounds. When slide/deck context is provided, align with adjacent slides and the presentation theme. Return valid JSON only.",
         },
         {
           role: "user",
@@ -309,7 +307,7 @@ export async function autofillDeck(options: {
     ? `\n\n--- Existing deck context ---\n${options.slideContext.trim()}\n--- End context ---`
     : "";
 
-  const userPrompt = `Create a complete dermatology presentation deck with varied layouts and clean, concise content.
+  const userPrompt = `Create a complete modern dermatology presentation deck with varied layouts and substantive content.
 
 Topic: ${options.prompt.trim()}
 Number of slides: ${count}
@@ -320,23 +318,20 @@ ${SLIDE_CONTENT_STYLE_GUIDE}
 
 ${SLIDE_INLINE_IMAGE_GUIDE}
 
+${SLIDE_BACKGROUND_GUIDE}
+
 Typography rules (every slide):
 - Font is ALWAYS Inter — set titleFontStyle and bodyFontStyle to "inter".
 - titleFontSize: 30–44 (title slide: 48). bodyFontSize: 18–22.
-- titleColor is ALWAYS "#111111". bodyColor is ALWAYS "#374151". Dark text works on all backgrounds.
+- titleColor is ALWAYS "#111111". bodyColor is ALWAYS "#374151".
 
 Layout rules:
 - First slide: layout "title" (large centered title + short subtitle). titleFontSize 48.
 - Last slide: layout "bullets" for key takeaways.
 - Vary layouts: use at least 4 different types.
-- Use ${minImageSlides}–${maxImageSlides} slides with layout "image-right" or "image-left" (about 40–50% of content slides) — each MUST include a detailed imagePrompt.
+- Use ${minImageSlides}–${maxImageSlides} slides with layout "image-right" or "image-left" (about 40–50% of content slides) — each MUST include imagePrompt tied to that slide's specific copy.
 - Optionally add imagePrompt on 1–2 "title-body" or "bullets" slides for accent illustrations when a small visual helps.
 - Use "two-column" for comparisons; "title-body" for narrative; "bullets" for lists.
-
-Background rules (backgroundStyle — vary across the deck):
-- "white" — plain #ffffff. Good for busy text slides.
-- "solid" — soft tasteful hex (#f8fafc, #eef2ff, #fef3c7, #ecfdf5, #fff7ed, #f0fdf4).
-- "ai" — an abstract, very-pale background image is generated. Provide backgroundImagePrompt: a short description of abstract visuals thematically matching the slide (e.g. "soft watercolor wash in warm coral tones echoing skin texture", "subtle pale-blue geometric cell pattern"). The generated image will be very light so black text remains readable. Use "ai" on 2–4 slides (title slide + key content slides). Do NOT use on slides that have imagePrompt (image-right/image-left or accent illustrations).
 
 Return JSON only:
 {
@@ -349,10 +344,9 @@ Return JSON only:
       "rightBody": "only for two-column",
       "notes": "3–4 sentence speaker notes with extra clinical detail",
       "layout": "title | title-body | bullets | two-column | image-right | image-left | image-hero",
-      "backgroundStyle": "white | solid | ai",
-      "background": "#hex fallback if ai fails",
-      "backgroundImagePrompt": "only when backgroundStyle is ai — brief abstract theme",
-      "imagePrompt": "required for image-right/image-left; optional accent on title-body/bullets — no text in image",
+      "backgroundStyle": "solid | ai",
+      "backgroundImagePrompt": "only when backgroundStyle is ai — modern theme tied to this slide's title and body",
+      "imagePrompt": "required for image-right/image-left; optional accent on title-body/bullets — must reference specific concepts from that slide's title/body; no text in image",
       "titleFontStyle": "inter",
       "bodyFontStyle": "inter",
       "titleFontSize": 34,
@@ -378,7 +372,7 @@ Return JSON only:
         {
           role: "system",
           content:
-            "You are a presentation designer for Ontario dermatology clinics. Create visually varied decks with substantive copy, inline illustration vectors (image-right/image-left layouts and optional imagePrompt on text slides), and intentional pale AI backgrounds where backgroundStyle is ai. Use Canadian spelling. When existing slide images are attached, build on those visuals. Return valid JSON only.",
+            "You are a modern presentation designer for Ontario dermatology clinics. Create visually varied decks with substantive copy. Inline illustration vectors must match each slide's specific content via imagePrompt. AI backdrops (backgroundStyle ai) are full-slide backgrounds separate from inline images. Do not suggest hex background colours. Use Canadian spelling. When existing slide images are attached, build on those visuals. Return valid JSON only.",
         },
         {
           role: "user",
