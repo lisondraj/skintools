@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getConvaiSignedUrl } from "@/lib/modules/elevenlabs";
 import { buildPatientInstructions } from "@/lib/modules/realtime";
 import type { RealtimeSessionReq, RealtimeSessionRes } from "@/lib/modules/types";
+import { DEFAULT_ELEVENLABS_VOICE_ID } from "@/lib/modules/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,10 +13,7 @@ function getElevenLabsKey(): string | undefined {
 }
 
 function getElevenLabsVoiceId(): string {
-  return (
-    process.env["ELEVENLABS_VOICE_ID"]?.trim() ||
-    "cgSgspJ2msm6clMCkdW9"
-  );
+  return process.env["ELEVENLABS_VOICE_ID"]?.trim() || DEFAULT_ELEVENLABS_VOICE_ID;
 }
 
 function getElevenLabsAgentId(): string | undefined {

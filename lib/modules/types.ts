@@ -168,5 +168,8 @@ export const DEFAULT_PATIENT_SIM: PatientSimConfig = {
   difficulty: "moderate",
 };
 
-/** Default ElevenLabs voice when ELEVENLABS_VOICE_ID is not set. */
-export const DEFAULT_ELEVENLABS_VOICE_ID = "cgSgspJ2msm6clMCkdW9";
+/** Default ElevenLabs voice when ELEVENLABS_VOICE_ID is not set (SkinTools agent voice). */
+export const DEFAULT_ELEVENLABS_VOICE_ID = "cjVigY5qzO86Huf0OWal";
+
+/** SkinTools ConvAI agent — set ELEVENLABS_AGENT_ID in production. */
+export const DEFAULT_ELEVENLABS_AGENT_ID = "agent_3401kv4c6fgyew1bp5gvnxhdq7bz";

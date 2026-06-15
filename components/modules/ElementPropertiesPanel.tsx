@@ -544,7 +544,7 @@ export function ElementPropertiesPanel({
         <div className="modules-panel__section">
           <h2 className="modules-panel__heading">Virtual patient</h2>
           <p className="modules-panel__hint">
-            Configure persona and scenario in the canvas. Voice is set server-side via ELEVENLABS_VOICE_ID.
+            Configure persona and scenario in the canvas. Set ELEVENLABS_AGENT_ID and ELEVENLABS_VOICE_ID in Vercel. Enable prompt override on your ConvAI agent.
           </p>
         </div>
       )}
