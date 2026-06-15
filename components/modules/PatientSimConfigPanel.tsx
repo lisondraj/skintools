@@ -1,7 +1,6 @@
 "use client";
 
 import type { PatientSimConfig, Slide } from "@/lib/modules/types";
-import { ELEVENLABS_VOICES } from "@/lib/modules/types";
 
 type Props = {
   sim?: PatientSimConfig;
@@ -12,7 +11,6 @@ export function PatientSimConfigPanel({ sim, onChange }: Props) {
   const config = sim ?? {
     persona: "",
     scenario: "",
-    voice: ELEVENLABS_VOICES[0].id,
     difficulty: "moderate" as const,
   };
 
@@ -44,39 +42,22 @@ export function PatientSimConfigPanel({ sim, onChange }: Props) {
         />
       </label>
 
-      <div className="modules-sim-config__row">
-        <label className="modules-field">
-          <span className="modules-field__label">Voice</span>
-          <select
-            className="modules-field__input"
-            value={config.voice}
-            onChange={(e) => onChange({ voice: e.target.value })}
-          >
-            {ELEVENLABS_VOICES.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.label}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="modules-field">
-          <span className="modules-field__label">Difficulty</span>
-          <select
-            className="modules-field__input"
-            value={config.difficulty}
-            onChange={(e) =>
-              onChange({
-                difficulty: e.target.value as PatientSimConfig["difficulty"],
-              })
-            }
-          >
-            <option value="easy">Easy</option>
-            <option value="moderate">Moderate</option>
-            <option value="challenging">Challenging</option>
-          </select>
-        </label>
-      </div>
+      <label className="modules-field">
+        <span className="modules-field__label">Difficulty</span>
+        <select
+          className="modules-field__input"
+          value={config.difficulty}
+          onChange={(e) =>
+            onChange({
+              difficulty: e.target.value as PatientSimConfig["difficulty"],
+            })
+          }
+        >
+          <option value="easy">Easy</option>
+          <option value="moderate">Moderate</option>
+          <option value="challenging">Challenging</option>
+        </select>
+      </label>
     </div>
   );
 }
@@ -91,7 +72,7 @@ export function PatientSimSlidePreview({ slide }: { slide: Slide }) {
       <h3>Virtual patient simulation</h3>
       <p>{sim?.persona || "Patient persona not set"}</p>
       <p className="modules-sim-preview__meta">
-        Voice: {ELEVENLABS_VOICES.find((v) => v.id === sim?.voice)?.label ?? sim?.voice ?? "Jessica"} · {sim?.difficulty || "moderate"}
+        Difficulty: {sim?.difficulty || "moderate"}
       </p>
     </div>
   );

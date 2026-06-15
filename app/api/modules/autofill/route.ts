@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { autofillText } from "@/lib/modules/openai";
-import type { AutofillReq, AutofillRes } from "@/lib/modules/types";
+import { autofillSlideLayout, autofillText } from "@/lib/modules/openai";
+import type { AutofillReq, AutofillRes, SlideLayoutRes } from "@/lib/modules/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,6 +12,21 @@ export async function POST(request: Request) {
 
     if (!body.mode) {
       return NextResponse.json({ error: "Mode is required." }, { status: 400 });
+    }
+
+    if (body.mode === "slide") {
+      if (!body.prompt?.trim()) {
+        return NextResponse.json(
+          { error: "Provide a topic for slide generation." },
+          { status: 400 },
+        );
+      }
+      const layout = await autofillSlideLayout({
+        prompt: body.prompt,
+        deckTitle: body.deckTitle,
+        slideContext: body.slideContext,
+      });
+      return NextResponse.json(layout satisfies SlideLayoutRes);
     }
 
     if (body.mode === "generate" && !body.prompt?.trim() && !body.slideContext?.trim()) {

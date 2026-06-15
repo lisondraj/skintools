@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { AutofillMode, Slide, SlideElement, TextElement } from "@/lib/modules/types";
+import { SLIDE_TEMPLATES, type SlideTemplateId } from "@/lib/modules/templates";
 
 type Props = {
   slide: Slide;
@@ -11,11 +12,14 @@ type Props = {
   autofillBusy: boolean;
   onUpdateText: (id: string, patch: Partial<TextElement>) => void;
   onUpdateBackground: (color: string) => void;
+  onUpdateNotes: (notes: string) => void;
+  onApplyTemplate: (templateId: SlideTemplateId) => void;
   onDeleteElement: () => void;
   onDuplicateElement: () => void;
   onBringForward: () => void;
   onSendBackward: () => void;
   onAutofill: (mode: AutofillMode, prompt?: string) => void;
+  onGenerateSlide: (prompt: string) => void;
   onDuplicateSlide: () => void;
   onMoveSlide: (direction: "up" | "down") => void;
   onDeleteSlide: () => void;
@@ -31,16 +35,20 @@ export function ElementPropertiesPanel({
   autofillBusy,
   onUpdateText,
   onUpdateBackground,
+  onUpdateNotes,
+  onApplyTemplate,
   onDeleteElement,
   onDuplicateElement,
   onBringForward,
   onSendBackward,
   onAutofill,
+  onGenerateSlide,
   onDuplicateSlide,
   onMoveSlide,
   onDeleteSlide,
 }: Props) {
   const [aiPrompt, setAiPrompt] = useState("");
+  const [slidePrompt, setSlidePrompt] = useState("");
   const isContent = slide.kind === "content";
   const isText = selectedElement?.kind === "text";
 
@@ -54,29 +62,66 @@ export function ElementPropertiesPanel({
         </p>
 
         {isContent && (
-          <label className="modules-field">
-            <span className="modules-field__label">Background</span>
-            <div className="modules-panel__swatches">
-              {BG_PRESETS.map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  className={`modules-panel__swatch${slide.background === color ? " is-active" : ""}`}
-                  style={{ background: color }}
-                  aria-label={`Background ${color}`}
-                  onClick={() => onUpdateBackground(color)}
+          <>
+            <label className="modules-field">
+              <span className="modules-field__label">Background</span>
+              <div className="modules-panel__swatches">
+                {BG_PRESETS.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    className={`modules-panel__swatch${slide.background === color ? " is-active" : ""}`}
+                    style={{ background: color }}
+                    aria-label={`Background ${color}`}
+                    onClick={() => onUpdateBackground(color)}
+                  />
+                ))}
+                <input
+                  type="color"
+                  className="modules-panel__color-input"
+                  value={slide.background}
+                  onChange={(e) => onUpdateBackground(e.target.value)}
+                  aria-label="Custom background color"
                 />
-              ))}
-              <input
-                type="color"
-                className="modules-panel__color-input"
-                value={slide.background}
-                onChange={(e) => onUpdateBackground(e.target.value)}
-                aria-label="Custom background color"
-              />
-            </div>
-          </label>
+              </div>
+            </label>
+
+            <label className="modules-field">
+              <span className="modules-field__label">Layout template</span>
+              <select
+                className="modules-field__input"
+                defaultValue=""
+                onChange={(e) => {
+                  const id = e.target.value as SlideTemplateId;
+                  if (id) {
+                    onApplyTemplate(id);
+                    e.target.value = "";
+                  }
+                }}
+              >
+                <option value="" disabled>
+                  Choose a layout…
+                </option>
+                {SLIDE_TEMPLATES.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
         )}
+
+        <label className="modules-field">
+          <span className="modules-field__label">Speaker notes</span>
+          <textarea
+            className="modules-field__input"
+            rows={3}
+            placeholder="Notes visible only to you during editing…"
+            value={slide.notes ?? ""}
+            onChange={(e) => onUpdateNotes(e.target.value)}
+          />
+        </label>
 
         <div className="modules-panel__btn-row">
           <button type="button" className="modules-btn modules-btn--secondary" onClick={onDuplicateSlide}>
@@ -88,7 +133,7 @@ export function ElementPropertiesPanel({
             disabled={slideIndex === 0}
             onClick={() => onMoveSlide("up")}
           >
-            Move up
+            Up
           </button>
           <button
             type="button"
@@ -96,7 +141,7 @@ export function ElementPropertiesPanel({
             disabled={slideIndex >= slideCount - 1}
             onClick={() => onMoveSlide("down")}
           >
-            Move down
+            Down
           </button>
         </div>
         {slideCount > 1 && (
@@ -108,27 +153,49 @@ export function ElementPropertiesPanel({
 
       {isContent && !selectedElement && (
         <div className="modules-panel__section">
-          <h2 className="modules-panel__heading">AI text</h2>
+          <h2 className="modules-panel__heading">AI</h2>
           <label className="modules-field">
-            <span className="modules-field__label">Prompt</span>
+            <span className="modules-field__label">Generate full slide</span>
             <textarea
               className="modules-field__input"
-              rows={3}
-              placeholder="Describe the text to add to this slide…"
+              rows={2}
+              placeholder="Topic for title + body…"
+              value={slidePrompt}
+              onChange={(e) => setSlidePrompt(e.target.value)}
+            />
+          </label>
+          <button
+            type="button"
+            className="modules-btn modules-btn--primary modules-panel__full-btn"
+            disabled={autofillBusy || !slidePrompt.trim()}
+            onClick={() => {
+              onGenerateSlide(slidePrompt.trim());
+              setSlidePrompt("");
+            }}
+          >
+            {autofillBusy ? "Generating…" : "Generate slide"}
+          </button>
+
+          <label className="modules-field">
+            <span className="modules-field__label">Add text box</span>
+            <textarea
+              className="modules-field__input"
+              rows={2}
+              placeholder="Single text box content…"
               value={aiPrompt}
               onChange={(e) => setAiPrompt(e.target.value)}
             />
           </label>
           <button
             type="button"
-            className="modules-btn modules-btn--primary modules-panel__full-btn"
+            className="modules-btn modules-btn--secondary modules-panel__full-btn"
             disabled={autofillBusy || !aiPrompt.trim()}
             onClick={() => {
               onAutofill("generate", aiPrompt.trim());
               setAiPrompt("");
             }}
           >
-            {autofillBusy ? "Generating…" : "Generate text"}
+            {autofillBusy ? "Working…" : "Generate text box"}
           </button>
         </div>
       )}
@@ -231,7 +298,7 @@ export function ElementPropertiesPanel({
         <div className="modules-panel__section">
           <h2 className="modules-panel__heading">Virtual patient</h2>
           <p className="modules-panel__hint">
-            Configure persona, scenario, and voice in the canvas. During presentation, learners speak with this patient in real time.
+            Configure persona and scenario in the canvas. Voice is set server-side via ELEVENLABS_VOICE_ID.
           </p>
         </div>
       )}

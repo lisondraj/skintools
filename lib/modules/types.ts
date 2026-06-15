@@ -36,7 +36,6 @@ export type PatientSimDifficulty = "easy" | "moderate" | "challenging";
 export interface PatientSimConfig {
   persona: string;
   scenario: string;
-  voice: string;
   difficulty: PatientSimDifficulty;
 }
 
@@ -47,6 +46,7 @@ export interface Slide {
   kind: SlideKind;
   background: string;
   elements: SlideElement[];
+  notes?: string;
   sim?: PatientSimConfig;
 }
 
@@ -58,7 +58,7 @@ export interface Deck {
   updatedAt: number;
 }
 
-export type AutofillMode = "generate" | "rewrite" | "expand" | "shorten";
+export type AutofillMode = "generate" | "rewrite" | "expand" | "shorten" | "slide";
 
 export interface AutofillReq {
   mode: AutofillMode;
@@ -70,6 +70,11 @@ export interface AutofillReq {
 
 export interface AutofillRes {
   text: string;
+}
+
+export interface SlideLayoutRes {
+  title: string;
+  body: string;
 }
 
 export interface RealtimeSessionReq {
@@ -85,23 +90,8 @@ export const DEFAULT_PATIENT_SIM: PatientSimConfig = {
   persona: "Anxious adult patient with a new skin diagnosis",
   scenario:
     "You just received a diagnosis and want clear, reassuring answers about what it means and what to do next.",
-  voice: "alloy",
   difficulty: "moderate",
 };
 
-/** ElevenLabs pre-built voices available for ConvAI agents. */
-export interface ElevenLabsVoice {
-  id: string;
-  label: string;
-}
-
-export const ELEVENLABS_VOICES: ElevenLabsVoice[] = [
-  { id: "cgSgspJ2msm6clMCkdW9", label: "Jessica (conversational)" },
-  { id: "iP95p4xoKVk53GoZ742B", label: "Chris (professional)" },
-  { id: "9BWtsMINqrJLrRacOk9x", label: "Aria (warm)" },
-  { id: "XB0fDUnXU5powFXDhCwa", label: "Charlotte (empathetic)" },
-  { id: "nPczCjzI2devNBz1zQrb", label: "Brian (calm)" },
-  { id: "pqHfZKP75CvOlQylNhV4", label: "Bill (authoritative)" },
-  { id: "bIHbv24MWmeRgasZH58o", label: "Will (friendly)" },
-  { id: "EXAVITQu4vr4xnSDxMaL", label: "Bella (soothing)" },
-];
+/** Default ElevenLabs voice when ELEVENLABS_VOICE_ID is not set. */
+export const DEFAULT_ELEVENLABS_VOICE_ID = "cgSgspJ2msm6clMCkdW9";

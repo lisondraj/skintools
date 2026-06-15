@@ -1,14 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { SlideCanvas } from "@/components/modules/SlideCanvas";
 import { SlideThumbnails } from "@/components/modules/SlideThumbnails";
 import { ElementPropertiesPanel } from "@/components/modules/ElementPropertiesPanel";
 import { ImageLibrary } from "@/components/modules/ImageLibrary";
 import { PresentMode } from "@/components/modules/PresentMode";
-import { autofillText } from "@/lib/modules/client";
+import { autofillSlide, autofillText } from "@/lib/modules/client";
 import {
+  clampElement,
   createImageElement,
   createTextElement,
   duplicateElement,
@@ -16,10 +17,13 @@ import {
 } from "@/lib/modules/elements";
 import {
   addSlide,
+  createNewDeck,
   deleteSlide,
   duplicateSlide,
+  exportDeckJson,
   getDeck,
   hydrateDeck,
+  importDeckFromJson,
   moveSlide,
   nextElementZ,
   onStorageError,
@@ -27,7 +31,9 @@ import {
   updateSimConfig,
   updateSlide,
 } from "@/lib/modules/storage";
+import { buildSlideTemplate, type SlideTemplateId } from "@/lib/modules/templates";
 import type { AutofillMode, Deck, SlideElement } from "@/lib/modules/types";
+import { MODULES_STAGE_W } from "@/lib/modules/types";
 
 export default function ModulesPage() {
   const [deck, setDeck] = useState<Deck | null>(null);
@@ -35,8 +41,10 @@ export default function ModulesPage() {
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [presenting, setPresenting] = useState(false);
+  const [presentStartIndex, setPresentStartIndex] = useState(0);
   const [autofillBusy, setAutofillBusy] = useState(false);
   const [error, setError] = useState("");
+  const importRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     void hydrateDeck().then((d) => setDeck(d));
@@ -62,6 +70,20 @@ export default function ModulesPage() {
     setSelectedElementId(null);
   }, [activeSlide, selectedElementId, updateElements]);
 
+  const nudgeElement = useCallback(
+    (dx: number, dy: number) => {
+      if (!activeSlide || !selectedElementId) return;
+      updateElements(
+        activeSlide.elements.map((el) =>
+          el.id === selectedElementId
+            ? clampElement({ ...el, x: el.x + dx, y: el.y + dy })
+            : el,
+        ),
+      );
+    },
+    [activeSlide, selectedElementId, updateElements],
+  );
+
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       const tag = (e.target as HTMLElement).tagName;
@@ -70,11 +92,32 @@ export default function ModulesPage() {
       if ((e.key === "Delete" || e.key === "Backspace") && selectedElementId) {
         e.preventDefault();
         handleDeleteElement();
+        return;
+      }
+
+      const step = e.shiftKey ? 24 : 8;
+      if (selectedElementId && ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+        e.preventDefault();
+        if (e.key === "ArrowUp") nudgeElement(0, -step);
+        if (e.key === "ArrowDown") nudgeElement(0, step);
+        if (e.key === "ArrowLeft") nudgeElement(-step, 0);
+        if (e.key === "ArrowRight") nudgeElement(step, 0);
+        return;
+      }
+
+      if (!deck) return;
+      if (e.key === "ArrowLeft" && activeIndex > 0) {
+        setActiveIndex((i) => i - 1);
+        setSelectedElementId(null);
+      }
+      if (e.key === "ArrowRight" && activeIndex < deck.slides.length - 1) {
+        setActiveIndex((i) => i + 1);
+        setSelectedElementId(null);
       }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [handleDeleteElement, selectedElementId]);
+  }, [activeIndex, deck, handleDeleteElement, nudgeElement, selectedElementId]);
 
   function handleAddText() {
     if (!activeSlide || activeSlide.kind !== "content") return;
@@ -122,8 +165,90 @@ export default function ModulesPage() {
     }
   }
 
+  async function handleGenerateSlide(prompt: string) {
+    if (!deck || !activeSlide || activeSlide.kind !== "content") return;
+    setAutofillBusy(true);
+    setError("");
+    try {
+      const layout = await autofillSlide({
+        prompt,
+        deckTitle: deck.title,
+        slideContext: `Slide ${activeIndex + 1}`,
+      });
+      const title = createTextElement(layout.title, 1, {
+        x: 80,
+        y: 60,
+        w: MODULES_STAGE_W - 160,
+        h: 72,
+        fontSize: 36,
+        fontWeight: 600,
+      });
+      const body = createTextElement(layout.body, 2, {
+        x: 80,
+        y: 160,
+        w: MODULES_STAGE_W - 160,
+        h: 280,
+        fontSize: 22,
+        fontWeight: 400,
+      });
+      updateElements([title, body]);
+      setSelectedElementId(title.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Slide generation failed.");
+    } finally {
+      setAutofillBusy(false);
+    }
+  }
+
+  function handleApplyTemplate(templateId: SlideTemplateId) {
+    if (!activeSlide || activeSlide.kind !== "content") return;
+    updateElements(buildSlideTemplate(templateId));
+    setSelectedElementId(null);
+  }
+
+  function handleExport() {
+    const json = exportDeckJson();
+    if (!json || !deck) return;
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${deck.title.replace(/[^a-z0-9-_]+/gi, "-").toLowerCase() || "presentation"}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleImportFile(file: File) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = reader.result;
+      if (typeof text !== "string") return;
+      const imported = importDeckFromJson(text);
+      if (imported) {
+        setDeck(imported);
+        setActiveIndex(0);
+        setSelectedElementId(null);
+        setError("");
+      } else {
+        setError("Could not import deck. Check the file format.");
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function startPresent(fromCurrent = false) {
+    setPresentStartIndex(fromCurrent ? activeIndex : 0);
+    setPresenting(true);
+  }
+
   if (presenting && deck) {
-    return <PresentMode deck={deck} onExit={() => setPresenting(false)} />;
+    return (
+      <PresentMode
+        deck={deck}
+        startIndex={presentStartIndex}
+        onExit={() => setPresenting(false)}
+      />
+    );
   }
 
   if (!deck || !activeSlide) {
@@ -155,6 +280,9 @@ export default function ModulesPage() {
             }}
             aria-label="Presentation title"
           />
+          <span className="modules__slide-badge">
+            {activeIndex + 1}/{deck.slides.length}
+          </span>
         </div>
 
         {isContent && (
@@ -168,13 +296,50 @@ export default function ModulesPage() {
           </div>
         )}
 
-        <button
-          type="button"
-          className="modules-action-btn modules-action-btn--primary"
-          onClick={() => setPresenting(true)}
-        >
-          Present
-        </button>
+        <div className="modules__topbar-tools">
+          <button
+            type="button"
+            className="modules-action-btn"
+            onClick={() => {
+              const next = createNewDeck();
+              if (next) {
+                setDeck(next);
+                setActiveIndex(0);
+                setSelectedElementId(null);
+              }
+            }}
+          >
+            New
+          </button>
+          <button type="button" className="modules-action-btn" onClick={handleExport}>
+            Export
+          </button>
+          <button type="button" className="modules-action-btn" onClick={() => importRef.current?.click()}>
+            Import
+          </button>
+          <button type="button" className="modules-action-btn" onClick={() => startPresent(true)}>
+            Present here
+          </button>
+          <button
+            type="button"
+            className="modules-action-btn modules-action-btn--primary"
+            onClick={() => startPresent(false)}
+          >
+            Present
+          </button>
+        </div>
+
+        <input
+          ref={importRef}
+          type="file"
+          accept="application/json,.json"
+          hidden
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleImportFile(file);
+            e.target.value = "";
+          }}
+        />
       </header>
 
       {error && (
@@ -209,6 +374,12 @@ export default function ModulesPage() {
         />
 
         <main className="modules__canvas-area">
+          {activeSlide.notes && (
+            <div className="modules__notes-preview" aria-label="Speaker notes">
+              <span className="modules__notes-label">Notes</span>
+              {activeSlide.notes}
+            </div>
+          )}
           <SlideCanvas
             slide={activeSlide}
             selectedElementId={selectedElementId}
@@ -238,6 +409,11 @@ export default function ModulesPage() {
             const next = updateSlide(activeSlide.id, (slide) => ({ ...slide, background: color }));
             if (next) setDeck(next);
           }}
+          onUpdateNotes={(notes) => {
+            const next = updateSlide(activeSlide.id, (slide) => ({ ...slide, notes }));
+            if (next) setDeck(next);
+          }}
+          onApplyTemplate={handleApplyTemplate}
           onDeleteElement={handleDeleteElement}
           onDuplicateElement={() => {
             if (!selectedEl) return;
@@ -254,6 +430,7 @@ export default function ModulesPage() {
             updateElements(shiftElementZ(activeSlide.elements, selectedElementId, "backward"));
           }}
           onAutofill={(mode, prompt) => void handleAutofill(mode, prompt)}
+          onGenerateSlide={(prompt) => void handleGenerateSlide(prompt)}
           onDuplicateSlide={() => {
             const next = duplicateSlide(activeSlide.id);
             if (next) {
@@ -284,7 +461,7 @@ export default function ModulesPage() {
       <footer className="modules__statusbar">
         <span>
           {isContent
-            ? "Double-click text to edit · Delete to remove selection"
+            ? "← → slides · Arrow keys nudge · Delete removes · Double-click text to edit"
             : "Configure the virtual patient in the canvas"}
         </span>
         <span>{deck.slides.length} slide{deck.slides.length === 1 ? "" : "s"}</span>

@@ -18,6 +18,15 @@ export async function autofillText(req: AutofillReq): Promise<string> {
   return data.text;
 }
 
+export async function autofillSlide(req: Omit<AutofillReq, "mode">): Promise<{ title: string; body: string }> {
+  const response = await fetch("/api/modules/autofill", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...req, mode: "slide" }),
+  });
+  return parseJson<{ title: string; body: string }>(response);
+}
+
 export async function createRealtimeSession(
   req: RealtimeSessionReq,
 ): Promise<RealtimeSessionRes & { instructions: string }> {

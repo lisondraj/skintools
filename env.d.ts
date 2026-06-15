@@ -8,6 +8,7 @@ declare namespace NodeJS {
     OPENAI_REALTIME_VOICE?: string;
     ELEVENLABS_API_KEY?: string;
     ELEVENLABS_AGENT_ID?: string;
+    ELEVENLABS_VOICE_ID?: string;
     SKINLOG_AI_MOCK?: string;
   }
 }

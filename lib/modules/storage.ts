@@ -274,3 +274,45 @@ export function nextElementZ(elements: SlideElement[]): number {
   if (elements.length === 0) return 1;
   return Math.max(...elements.map((el) => el.z)) + 1;
 }
+
+export function createNewDeck(title = "Untitled presentation"): Deck | null {
+  if (!isBrowser()) return null;
+  const deck = createDefaultDeck(title);
+  cache = deck;
+  queuePersist(deck);
+  return deck;
+}
+
+export function exportDeckJson(): string | null {
+  const deck = getDeck();
+  if (!deck) return null;
+  return JSON.stringify(deck, null, 2);
+}
+
+export function importDeckFromJson(json: string): Deck | null {
+  if (!isBrowser()) return null;
+  try {
+    const parsed = JSON.parse(json) as Deck;
+    if (!parsed.id || !Array.isArray(parsed.slides) || !parsed.title) {
+      throw new Error("Invalid deck file.");
+    }
+    const deck: Deck = {
+      ...parsed,
+      id: crypto.randomUUID(),
+      updatedAt: Date.now(),
+      slides: parsed.slides.map((slide) => ({
+        ...slide,
+        id: crypto.randomUUID(),
+        elements: (slide.elements ?? []).map((el) => ({
+          ...el,
+          id: crypto.randomUUID(),
+        })),
+      })),
+    };
+    cache = deck;
+    queuePersist(deck);
+    return deck;
+  } catch {
+    return null;
+  }
+}

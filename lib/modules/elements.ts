@@ -4,6 +4,7 @@ import { MODULES_STAGE_H, MODULES_STAGE_W } from "@/lib/modules/types";
 export function createTextElement(
   text = "Double-click to edit",
   z = 1,
+  overrides?: Partial<Omit<TextElement, "kind" | "id" | "text" | "z">>,
 ): TextElement {
   return {
     kind: "text",
@@ -18,6 +19,7 @@ export function createTextElement(
     fontWeight: 500,
     color: "#111111",
     align: "left",
+    ...overrides,
   };
 }
 

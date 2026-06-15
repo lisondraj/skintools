@@ -10,6 +10,13 @@ function getElevenLabsKey(): string | undefined {
   return process.env["ELEVENLABS_API_KEY"]?.trim() || undefined;
 }
 
+function getElevenLabsVoiceId(): string {
+  return (
+    process.env["ELEVENLABS_VOICE_ID"]?.trim() ||
+    "cgSgspJ2msm6clMCkdW9"
+  );
+}
+
 function getElevenLabsAgentId(): string | undefined {
   return process.env["ELEVENLABS_AGENT_ID"]?.trim() || undefined;
 }
@@ -41,7 +48,7 @@ export async function POST(request: Request) {
     }
 
     const instructions = buildPatientInstructions(body.sim);
-    const voiceId = body.sim.voice?.trim() || "cgSgspJ2msm6clMCkdW9";
+    const voiceId = getElevenLabsVoiceId();
 
     // Get a signed URL from ElevenLabs for this session
     const signedUrlRes = await fetch(

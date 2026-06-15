@@ -8,11 +8,12 @@ import { PatientSimSlidePreview } from "./PatientSimConfigPanel";
 
 type Props = {
   deck: Deck;
+  startIndex?: number;
   onExit: () => void;
 };
 
-export function PresentMode({ deck, onExit }: Props) {
-  const [index, setIndex] = useState(0);
+export function PresentMode({ deck, startIndex = 0, onExit }: Props) {
+  const [index, setIndex] = useState(startIndex);
   const [simActive, setSimActive] = useState(false);
   const slide = deck.slides[index];
 
