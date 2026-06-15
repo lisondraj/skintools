@@ -125,7 +125,7 @@ export function PatientSimSlidePreview({
       <div className="vsp-preview__tags">
         {difficulty && <span className="vsp-preview__tag">{difficulty.label}</span>}
         <span className="vsp-preview__tag">{minutes} min</span>
-        <span className="vsp-preview__tag">Push-to-talk</span>
+        <span className="vsp-preview__tag">Push-to-talk · mute to continue</span>
       </div>
     </div>
   );

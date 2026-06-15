@@ -5,7 +5,10 @@ import { Conversation } from "@11labs/client";
 import type { DisconnectionDetails } from "@11labs/client";
 import { createRealtimeSession } from "@/lib/modules/client";
 import {
+  buildMicMuteUpdate,
+  buildMicUnmuteUpdate,
   buildSessionContextUpdate,
+  buildSessionStartContext,
   buildWrapUpContextUpdate,
   formatSimCountdown,
   getSimTimeLimitMinutes,
@@ -106,6 +109,7 @@ export function PatientSimRunner({ sim, onEnd, autoStart = false, presentMode = 
   const phaseSentRef = useRef({ warning: false, urgent: false, end: false });
   const lastMinuteRef = useRef(0);
   const micOpenRef = useRef(false);
+  const prevMicOpenRef = useRef(false);
 
   const totalSec = getSimTimeLimitSeconds(sim);
 
@@ -139,8 +143,19 @@ export function PatientSimRunner({ sim, onEnd, autoStart = false, presentMode = 
     const conv = convRef.current;
     if (!conv || !connectedRef.current) return;
 
-    pushContext(conv, Math.floor((Date.now() - connectTimeRef.current) / 1000), micOpen);
-  }, [micOpen, pushContext]);
+    const elapsedSec = Math.floor((Date.now() - connectTimeRef.current) / 1000);
+    const prev = prevMicOpenRef.current;
+
+    if (micOpen && !prev) {
+      conv.sendContextualUpdate(buildMicUnmuteUpdate(sim));
+    } else if (!micOpen && prev) {
+      conv.sendContextualUpdate(buildMicMuteUpdate(sim));
+    } else {
+      pushContext(conv, elapsedSec, micOpen);
+    }
+
+    prevMicOpenRef.current = micOpen;
+  }, [micOpen, pushContext, sim]);
 
   const finishSession = useCallback(
     (endRemote = true) => {
@@ -148,6 +163,7 @@ export function PatientSimRunner({ sim, onEnd, autoStart = false, presentMode = 
       cleanup(endRemote);
       connectedRef.current = false;
       setMicOpen(false);
+      prevMicOpenRef.current = false;
       setStatus("ended");
     },
     [cleanup],
@@ -158,6 +174,7 @@ export function PatientSimRunner({ sim, onEnd, autoStart = false, presentMode = 
     setError("");
     setStatus("connecting");
     setMicOpen(false);
+    prevMicOpenRef.current = false;
     setRemainingSec(totalSec);
     connectedRef.current = false;
     connectTimeRef.current = 0;
@@ -174,8 +191,7 @@ export function PatientSimRunner({ sim, onEnd, autoStart = false, presentMode = 
         connectionType: "websocket",
         overrides: {
           agent: {
-            firstMessage:
-              "Hello — I'll wait while you get ready. Unmute your microphone when you'd like to begin.",
+            firstMessage: "",
           },
           tts: { voiceId: session.voiceId },
         },
@@ -189,6 +205,7 @@ export function PatientSimRunner({ sim, onEnd, autoStart = false, presentMode = 
         onConnect: () => {
           connectedRef.current = true;
           connectTimeRef.current = Date.now();
+          prevMicOpenRef.current = false;
           convRef.current?.setMicMuted(true);
           setStatus("listening");
         },
@@ -225,6 +242,7 @@ export function PatientSimRunner({ sim, onEnd, autoStart = false, presentMode = 
       }
 
       conv.sendContextualUpdate(session.instructions);
+      conv.sendContextualUpdate(buildSessionStartContext(sim));
       conv.sendContextualUpdate(
         buildSessionContextUpdate(sim, 0, totalSec, false),
       );
@@ -296,8 +314,8 @@ export function PatientSimRunner({ sim, onEnd, autoStart = false, presentMode = 
   const statusLabel: Record<SimStatus, string> = {
     idle: "Ready",
     connecting: "Connecting",
-    listening: micOpen ? "You're speaking" : "Patient waiting",
-    speaking: "Patient speaking",
+    listening: micOpen ? "Your turn — speaking" : "Muted — patient waiting",
+    speaking: "Patient responding",
     error: "Error",
     ended: "Ended",
   };
@@ -333,10 +351,10 @@ export function PatientSimRunner({ sim, onEnd, autoStart = false, presentMode = 
         </div>
         <AudioBars level={audioLevel} active={isLive} />
         <p className="vsp-runner__hint">
-          {status === "idle" && "Start when you're ready to practice the consultation."}
+          {status === "idle" && "Start when you're ready. Push-to-talk: unmute to speak, mute when done — the patient replies after you mute."}
           {status === "connecting" && "Setting up voice connection…"}
-          {status === "listening" && !micOpen && "Unmute to speak — the patient waits while you think."}
-          {status === "listening" && micOpen && "Microphone on — mute when you're done speaking."}
+          {status === "listening" && !micOpen && "Unmute to speak. The patient waits silently until you mute again."}
+          {status === "listening" && micOpen && "Speaking… mute when finished — the patient responds after you mute."}
           {status === "speaking" && "Patient is responding…"}
           {status === "error" && "Something went wrong. You can retry or skip."}
           {status === "ended" && "Session complete."}
@@ -363,7 +381,7 @@ export function PatientSimRunner({ sim, onEnd, autoStart = false, presentMode = 
               <span className="vsp-runner__mic-icon" aria-hidden>
                 {micOpen ? "◉" : "○"}
               </span>
-              {micOpen ? "Mute — done speaking" : "Unmute to speak"}
+              {micOpen ? "Mute — patient can respond" : "Unmute to speak"}
             </button>
             <button type="button" className="vsp-runner__end-btn" onClick={() => finishSession(true)}>
               End session

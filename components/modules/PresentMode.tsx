@@ -72,7 +72,7 @@ export function PresentMode({ deck, startIndex = 0, onExit }: Props) {
               Start patient conversation
             </button>
             <p className="modules-present__sim-tip">
-              Push-to-talk · Unmute only when speaking
+              Push-to-talk · Unmute to speak, mute when done — patient responds after you mute
             </p>
           </div>
         </div>
