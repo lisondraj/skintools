@@ -845,6 +845,122 @@
   color: var(--skinlog-muted);
 }
 
+/* ── iPhone / small mobile (≤480px) ─────────────────────────── */
+@media (max-width: 480px) {
+  /* Form — generous touch targets */
+  .ig-field__input,
+  .ig-field__textarea,
+  .ig-field__select {
+    font-size: 16px; /* prevent iOS auto-zoom */
+    padding: 13px 14px;
+  }
+
+  .ig-field__label {
+    font-size: 12px;
+  }
+
+  .ig-ai-fill {
+    padding: 9px 14px;
+    font-size: 14px;
+  }
+
+  /* Quality toggle — bigger tap targets */
+  .ig-quality-toggle__btn {
+    padding: 10px 20px;
+    font-size: 14px;
+  }
+
+  /* Generating screen — center on mobile */
+  .ig-generating {
+    align-items: center;
+    padding: 40px 0;
+    text-align: center;
+  }
+
+  .ig-generating__context {
+    padding-left: 0;
+    text-align: center;
+  }
+
+  .ig-generating__steps {
+    align-items: flex-start;
+    width: 100%;
+  }
+
+  /* Preview screen */
+  .ig-preview {
+    align-items: stretch;
+  }
+
+  .ig-preview__header {
+    text-align: left;
+  }
+
+  .ig-preview__meta {
+    justify-content: flex-start;
+  }
+
+  /* Template cards — full-width, portrait, single column */
+  .ig-templates {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .ig-template-card__img-wrap {
+    max-height: 60dvh;
+  }
+
+  .ig-template-card__cta {
+    padding: 14px 16px;
+    font-size: 15px;
+  }
+
+  /* History — bigger cards on mobile */
+  .ig-history {
+    margin-top: 24px;
+  }
+
+  .ig-history-card {
+    flex: 0 0 160px;
+  }
+
+  /* Always show delete on touch (no hover) */
+  .ig-history-card__delete {
+    opacity: 1;
+    width: 28px;
+    height: 28px;
+    font-size: 18px;
+  }
+
+  /* Editor */
+  .ig-editor__header {
+    padding: 14px 0 10px;
+  }
+
+  .ig-editor__toolbar {
+    gap: 8px;
+  }
+
+  .ig-editor__toolbar-group {
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .ig-editor__btn {
+    padding: 11px 14px;
+    font-size: 14px;
+  }
+
+  .ig-editor__image-wrap {
+    max-width: 100%;
+  }
+
+  /* How-it-works steps — hide on small screens to save space */
+  .ig-steps {
+    display: none;
+  }
+}
+
 /* ── Desktop ─────────────────────────────────────────────────── */
 @media (min-width: 768px) {
   .skinlog .ig-shell {

@@ -2239,6 +2239,16 @@ select.modules-field__input {
   flex-shrink: 0;
 }
 
+/* ── Mobile bottom nav (hidden on desktop) ───────────────────────── */
+.modules__mobile-nav {
+  display: none;
+}
+
+.modules__mobile-panel {
+  /* on desktop, panels always show — wrapper is transparent */
+  display: contents;
+}
+
 /* ── Responsive ──────────────────────────────────────────────────── */
 @media (max-width: 1100px) {
   .modules {
@@ -2275,5 +2285,273 @@ select.modules-field__input {
 
   .modules__statusbar span:first-child {
     display: none;
+  }
+}
+
+/* ── iPhone / small mobile (≤480px) ─────────────────────────────── */
+@media (max-width: 480px) {
+  .modules {
+    --mod-topbar-h: 52px;
+    --mod-statusbar-h: 0px;
+  }
+
+  /* ── Topbar: compact ── */
+  .modules__topbar {
+    padding: 8px 12px;
+    gap: 8px;
+  }
+
+  .modules__topbar-left {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .modules__title-input {
+    font-size: 13px;
+    max-width: 140px;
+    padding: 4px 8px;
+  }
+
+  .modules__slide-badge {
+    display: none;
+  }
+
+  /* Hide desktop tool groups; show only Present button + AI Deck */
+  .modules__topbar-tools {
+    display: none;
+  }
+
+  .modules__topbar-actions {
+    border-left: none;
+    padding-left: 0;
+    margin-left: 0;
+    gap: 6px;
+  }
+
+  /* Keep only Present and AI Deck visible on topbar */
+  .modules__topbar-actions .modules-action-btn:not(.modules-action-btn--primary):not([data-mobile-keep]) {
+    display: none;
+  }
+
+  /* ── Statusbar: hide on mobile ── */
+  .modules__statusbar {
+    display: none;
+  }
+
+  /* ── Workspace: single-panel tab layout ── */
+  .modules__workspace {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    /* remove grid */
+    grid-template-columns: none !important;
+  }
+
+  /* All panels stacked; hide them by default */
+  .modules__mobile-panel {
+    display: none;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .modules__mobile-panel.is-active {
+    display: flex;
+  }
+
+  /* Filmstrip panel: make it a horizontal slide list on mobile */
+  .modules__mobile-panel:has(.modules-filmstrip) {
+    overflow-y: auto;
+  }
+
+  .modules-filmstrip {
+    height: auto;
+    flex: 1;
+    overflow: visible;
+    border-right: none;
+    border-bottom: 1px solid var(--mod-border);
+  }
+
+  .modules-filmstrip__list {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 12px;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .modules-filmstrip__list li {
+    width: 120px;
+    flex-shrink: 0;
+  }
+
+  .modules-filmstrip__header {
+    padding: 10px 12px 4px;
+  }
+
+  .modules-filmstrip__add-row {
+    grid-template-columns: 1fr 1fr;
+    padding: 8px 12px 12px;
+  }
+
+  /* Canvas panel */
+  .modules__canvas-area {
+    padding: 12px 10px;
+    justify-content: flex-start;
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  .modules__slide-column {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .modules__notes-section {
+    margin-top: 0;
+  }
+
+  /* Tools panel: scrollable */
+  .modules-panel {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    flex: 1;
+    overflow-y: auto;
+    border-left: none;
+    border-top: 1px solid var(--mod-border);
+  }
+
+  /* Larger tap targets in properties panel */
+  .modules-btn {
+    min-height: 40px;
+    font-size: 14px;
+  }
+
+  .modules-field__input,
+  .modules-field__select,
+  .modules-field__textarea {
+    font-size: 16px; /* prevent iOS zoom */
+  }
+
+  /* ── Mobile tools row above canvas ── */
+  .modules__mobile-tools {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--mod-border);
+    background: var(--mod-bg);
+    overflow-x: auto;
+    scrollbar-width: none;
+    flex-shrink: 0;
+  }
+
+  .modules__mobile-tools::-webkit-scrollbar { display: none; }
+
+  .modules__mobile-tools .modules-action-btn {
+    font-size: 12px;
+    padding: 6px 10px;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  /* ── Bottom navigation ── */
+  .modules__mobile-nav {
+    display: flex;
+    flex-shrink: 0;
+    border-top: 1px solid var(--mod-border);
+    background: var(--mod-bg);
+    /* Safe area for iPhones with home indicator */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .modules__mobile-nav-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 10px 8px;
+    border: none;
+    background: transparent;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--mod-muted);
+    cursor: pointer;
+    transition: color 0.12s ease, background 0.12s ease;
+  }
+
+  .modules__mobile-nav-btn.is-active {
+    color: var(--mod-accent);
+    background: var(--mod-accent-soft);
+  }
+
+  .modules__mobile-nav-icon {
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  /* ── Modal: full-screen on mobile ── */
+  .modules-modal__panel {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 20px 20px 0 0;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-height: 85dvh;
+    overflow-y: auto;
+  }
+
+  .modules-modal {
+    align-items: flex-end;
+  }
+
+  /* Present mode: touch-friendly */
+  .modules-present__bar {
+    padding: 10px 14px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .modules-present__kbd-hint {
+    display: none;
+  }
+
+  .modules-present__stage {
+    padding: 16px 12px;
+  }
+
+  .modules-present__nav {
+    padding: 12px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+    gap: 12px;
+  }
+
+  .modules-present__nav-btn {
+    min-width: 80px;
+    padding: 12px 16px;
+    font-size: 14px;
+  }
+
+  .modules-present__sim-card {
+    padding: 28px 20px;
+  }
+
+  /* Shape dropdown: bigger targets */
+  .modules__shape-dropdown {
+    width: 180px;
+  }
+
+  .modules__shape-option {
+    padding: 12px 14px;
+    font-size: 14px;
   }
 }

@@ -49,6 +49,8 @@ import { buildDeckAIContext, buildSlideAIContext } from "@/lib/modules/context";
 import { SHAPE_OPTIONS } from "@/lib/modules/shapes";
 import type { AutofillMode, Deck, ShapeKind, SlideElement } from "@/lib/modules/types";
 
+type MobileTab = "slides" | "canvas" | "tools";
+
 export default function ModulesPage() {
   const [deck, setDeck] = useState<Deck | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -59,6 +61,7 @@ export default function ModulesPage() {
   const [presenting, setPresenting] = useState(false);
   const [presentStartIndex, setPresentStartIndex] = useState(0);
   const [autofillBusy, setAutofillBusy] = useState(false);
+  const [mobileTab, setMobileTab] = useState<MobileTab>("canvas");
   const [loadingProgress, setLoadingProgress] = useState<LoadingUpdate | null>(null);
   const [backgroundLoading, setBackgroundLoading] = useState(false);
   const [textSelection, setTextSelection] = useState<TextSelectionInfo | null>(null);
@@ -569,11 +572,12 @@ export default function ModulesPage() {
         </div>
       )}
 
-      <div className="modules__workspace">
+      <div className="modules__workspace" data-mobile-tab={mobileTab}>
+        <div className={`modules__mobile-panel${mobileTab === "slides" ? " is-active" : ""}`} aria-hidden={mobileTab !== "slides"}>
         <SlideThumbnails
           slides={deck.slides}
           activeIndex={activeIndex}
-          onSelect={(i) => { setActiveIndex(i); setSelectedElementId(null); setTextSelection(null); }}
+          onSelect={(i) => { setActiveIndex(i); setSelectedElementId(null); setTextSelection(null); setMobileTab("canvas"); }}
           onAdd={(kind) => {
             const next = addSlide(kind);
             if (next) {
@@ -592,8 +596,34 @@ export default function ModulesPage() {
             }
           }}
         />
+        </div>
 
-        <main className="modules__canvas-area">
+        <main className={`modules__canvas-area${mobileTab === "canvas" ? " modules__mobile-panel is-active" : " modules__mobile-panel"}`} aria-hidden={mobileTab !== "canvas"}>
+          {isContent && (
+            <div className="modules__mobile-tools">
+              <button
+                type="button"
+                className="modules-action-btn modules-action-btn--primary"
+                disabled={autofillBusy}
+                onClick={() => setDeckGenOpen(true)}
+              >
+                AI Deck
+              </button>
+              <button type="button" className="modules-action-btn" onClick={handleAddText}>
+                + Text
+              </button>
+              <button type="button" className="modules-action-btn" onClick={() => setLibraryOpen(true)}>
+                + Image
+              </button>
+              <button
+                type="button"
+                className="modules-action-btn"
+                onClick={() => startPresent(false)}
+              >
+                Present
+              </button>
+            </div>
+          )}
           <div className="modules__slide-column">
             <SlideCanvas
               slide={activeSlide}
@@ -626,6 +656,7 @@ export default function ModulesPage() {
           </div>
         </main>
 
+        <div className={`modules__mobile-panel${mobileTab === "tools" ? " is-active" : ""}`} aria-hidden={mobileTab !== "tools"}>
         <ElementPropertiesPanel
           slide={activeSlide}
           slideIndex={activeIndex}
@@ -696,7 +727,36 @@ export default function ModulesPage() {
             }
           }}
         />
+        </div>
       </div>
+
+      {/* Mobile bottom navigation */}
+      <nav className="modules__mobile-nav" aria-label="Mobile navigation">
+        <button
+          type="button"
+          className={`modules__mobile-nav-btn${mobileTab === "slides" ? " is-active" : ""}`}
+          onClick={() => setMobileTab("slides")}
+        >
+          <span className="modules__mobile-nav-icon" aria-hidden>⊞</span>
+          <span>Slides</span>
+        </button>
+        <button
+          type="button"
+          className={`modules__mobile-nav-btn${mobileTab === "canvas" ? " is-active" : ""}`}
+          onClick={() => setMobileTab("canvas")}
+        >
+          <span className="modules__mobile-nav-icon" aria-hidden>◻</span>
+          <span>Canvas</span>
+        </button>
+        <button
+          type="button"
+          className={`modules__mobile-nav-btn${mobileTab === "tools" ? " is-active" : ""}`}
+          onClick={() => setMobileTab("tools")}
+        >
+          <span className="modules__mobile-nav-icon" aria-hidden>⚙</span>
+          <span>Tools</span>
+        </button>
+      </nav>
 
       <footer className="modules__statusbar">
         <span>
