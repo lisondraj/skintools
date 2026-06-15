@@ -18,9 +18,16 @@ Use Canadian spelling. Blank lines between sections.`;
 
 export const SLIDE_LAYOUT_PICK_GUIDE = `
 Pick the best layout for this slide's content:
-- "title-body" — narrative or mixed paragraph + bullets
-- "bullets" — list-heavy with ## section breaks
+- "title-body" — narrative or mixed paragraph + bullets; optional imagePrompt adds a small accent illustration vector on the slide
+- "bullets" — list-heavy with ## section breaks; optional imagePrompt for a supporting accent illustration
 - "two-column" — compare/contrast (leftBody + rightBody, 4–6 items each)
-- "image-right" or "image-left" — when a clinical illustration helps (include imagePrompt)
+- "image-right" or "image-left" — primary illustration beside text (REQUIRED imagePrompt — becomes a canvas image vector)
 - "title" — only for opening/closing title slides
-- "image-hero" — dramatic opener with backgroundImagePrompt`;
+- "image-hero" — dramatic opener with backgroundImagePrompt (background only, not a canvas vector)`;
+
+export const SLIDE_INLINE_IMAGE_GUIDE = `
+Inline illustration vectors (canvas image elements — separate from pale AI backgrounds):
+- Use layout "image-right" or "image-left" when a clinical illustration is central to the slide. Always include a detailed imagePrompt.
+- On "title-body" or "bullets" slides, you MAY add an optional imagePrompt for a smaller accent illustration when it clarifies the topic.
+- Do NOT combine backgroundStyle "ai" with an imagePrompt on the same slide — pick one visual approach.
+- imagePrompt must describe a clean clinical illustration with NO text, NO labels, NO annotations, NO watermarks in the image.`;

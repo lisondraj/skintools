@@ -3,6 +3,7 @@ import { normalizeGeneratedSlide } from "./deck-builder";
 import { buildVisionUserContent } from "./openai-vision";
 import {
   SLIDE_CONTENT_STYLE_GUIDE,
+  SLIDE_INLINE_IMAGE_GUIDE,
   SLIDE_LAYOUT_PICK_GUIDE,
 } from "./slide-content-guide";
 import type { AutofillMode, GeneratedDeckSlide, SlideContextImage } from "./types";
@@ -189,6 +190,8 @@ ${SLIDE_CONTENT_STYLE_GUIDE}
 
 ${SLIDE_LAYOUT_PICK_GUIDE}
 
+${SLIDE_INLINE_IMAGE_GUIDE}
+
 Typography rules:
 - Font is ALWAYS Inter — set titleFontStyle/bodyFontStyle to "inter".
 - titleFontSize: 30–40. bodyFontSize: 18–22.
@@ -198,9 +201,7 @@ Background rules:
 - backgroundStyle "white" — plain #ffffff.
 - backgroundStyle "solid" — soft hex (#f8fafc, #eef2ff, #fef3c7, #ecfdf5, #fff7ed).
 - backgroundStyle "ai" — GPT generates an abstract pale background image. Provide backgroundImagePrompt: a brief description of the abstract visual theme that matches this slide (e.g. "soft watercolor wash in warm coral tones", "subtle geometric skin-cell pattern in pale blue"). The background will be very light so dark text stays readable.
-
-Image rules:
-- imagePrompt for image-right/image-left: describe a clean clinical illustration with absolutely NO text, NO labels, NO annotations, NO watermarks in the image itself.
+- Do NOT use backgroundStyle "ai" when imagePrompt is set on the same slide.
 
 Return JSON only:
 {
@@ -213,7 +214,7 @@ Return JSON only:
   "backgroundStyle": "white | solid | ai",
   "background": "#hex (fallback if ai generation fails)",
   "backgroundImagePrompt": "only for ai backgrounds — brief abstract theme description",
-  "imagePrompt": "if image-right/image-left — clinical illustration, no text in image",
+  "imagePrompt": "for image-right/image-left (required) or optional accent on title-body/bullets — clinical illustration, no text in image",
   "titleFontStyle": "inter",
   "bodyFontStyle": "inter",
   "titleFontSize": 34,
@@ -237,7 +238,7 @@ Return JSON only:
         {
           role: "system",
           content:
-            "You design substantive dermatology slides for Ontario clinics. Avoid repetitive bullet templates. Use varied structure and depth. When slide images are attached, align content with visuals. Return valid JSON only.",
+            "You design substantive dermatology slides for Ontario clinics. Avoid repetitive bullet templates. Use varied structure and depth. Generate inline illustration vectors via image-right/image-left layouts or optional imagePrompt on text layouts; AI backgrounds are separate pale backdrops. When slide images are attached, align content with visuals. Return valid JSON only.",
         },
         {
           role: "user",
@@ -300,6 +301,9 @@ export async function autofillDeck(options: {
   if (!key) throw new Error("OpenAI API key not configured.");
 
   const count = Math.min(Math.max(options.slideCount ?? 6, 3), 12);
+  const contentSlides = Math.max(1, count - 2);
+  const minImageSlides = Math.max(2, Math.ceil(contentSlides * 0.4));
+  const maxImageSlides = Math.max(minImageSlides, Math.ceil(contentSlides * 0.5));
 
   const contextBlock = options.slideContext?.trim()
     ? `\n\n--- Existing deck context ---\n${options.slideContext.trim()}\n--- End context ---`
@@ -314,6 +318,8 @@ ${contextBlock}
 
 ${SLIDE_CONTENT_STYLE_GUIDE}
 
+${SLIDE_INLINE_IMAGE_GUIDE}
+
 Typography rules (every slide):
 - Font is ALWAYS Inter — set titleFontStyle and bodyFontStyle to "inter".
 - titleFontSize: 30–44 (title slide: 48). bodyFontSize: 18–22.
@@ -323,16 +329,14 @@ Layout rules:
 - First slide: layout "title" (large centered title + short subtitle). titleFontSize 48.
 - Last slide: layout "bullets" for key takeaways.
 - Vary layouts: use at least 4 different types.
-- Use 1–2 slides with "image-right" or "image-left" with a detailed imagePrompt.
+- Use ${minImageSlides}–${maxImageSlides} slides with layout "image-right" or "image-left" (about 40–50% of content slides) — each MUST include a detailed imagePrompt.
+- Optionally add imagePrompt on 1–2 "title-body" or "bullets" slides for accent illustrations when a small visual helps.
 - Use "two-column" for comparisons; "title-body" for narrative; "bullets" for lists.
 
 Background rules (backgroundStyle — vary across the deck):
 - "white" — plain #ffffff. Good for busy text slides.
 - "solid" — soft tasteful hex (#f8fafc, #eef2ff, #fef3c7, #ecfdf5, #fff7ed, #f0fdf4).
-- "ai" — an abstract, very-pale background image is generated. Provide backgroundImagePrompt: a short description of abstract visuals thematically matching the slide (e.g. "soft watercolor wash in warm coral tones echoing skin texture", "subtle pale-blue geometric cell pattern"). The generated image will be very light so black text remains readable. Use "ai" on 2–4 slides (title slide + key content slides). Do NOT use on image-right/image-left slides.
-
-Image rules:
-- imagePrompt for image-right/image-left: describe a clinical illustration. The image must have ABSOLUTELY NO text, NO labels, NO annotations, NO watermarks, NO captions.
+- "ai" — an abstract, very-pale background image is generated. Provide backgroundImagePrompt: a short description of abstract visuals thematically matching the slide (e.g. "soft watercolor wash in warm coral tones echoing skin texture", "subtle pale-blue geometric cell pattern"). The generated image will be very light so black text remains readable. Use "ai" on 2–4 slides (title slide + key content slides). Do NOT use on slides that have imagePrompt (image-right/image-left or accent illustrations).
 
 Return JSON only:
 {
@@ -348,7 +352,7 @@ Return JSON only:
       "backgroundStyle": "white | solid | ai",
       "background": "#hex fallback if ai fails",
       "backgroundImagePrompt": "only when backgroundStyle is ai — brief abstract theme",
-      "imagePrompt": "only for image-right/image-left — no text in image",
+      "imagePrompt": "required for image-right/image-left; optional accent on title-body/bullets — no text in image",
       "titleFontStyle": "inter",
       "bodyFontStyle": "inter",
       "titleFontSize": 34,
@@ -374,7 +378,7 @@ Return JSON only:
         {
           role: "system",
           content:
-            "You are a presentation designer for Ontario dermatology clinics. Create visually varied decks with substantive copy and intentional slide background design (white, solid colour, or AI-generated backgrounds tied to each slide's content). Use Canadian spelling. When existing slide images are attached, build on those visuals. Return valid JSON only.",
+            "You are a presentation designer for Ontario dermatology clinics. Create visually varied decks with substantive copy, inline illustration vectors (image-right/image-left layouts and optional imagePrompt on text slides), and intentional pale AI backgrounds where backgroundStyle is ai. Use Canadian spelling. When existing slide images are attached, build on those visuals. Return valid JSON only.",
         },
         {
           role: "user",

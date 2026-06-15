@@ -68,5 +68,9 @@ export function shouldGenerateAiBackground(slide: GeneratedDeckSlide): boolean {
 }
 
 export function shouldGenerateInlineImage(slide: GeneratedDeckSlide): boolean {
-  return slide.layout === "image-right" || slide.layout === "image-left";
+  return (
+    slide.layout === "image-right" ||
+    slide.layout === "image-left" ||
+    Boolean(slide.imagePrompt?.trim())
+  );
 }

@@ -114,28 +114,201 @@ function resolveSpec(spec: GeneratedDeckSlide): ResolvedSpec {
   };
 }
 
-/* ── Height estimation ─────────────────────────────────────────── */
+/* ── Height estimation (mirrors RichTextContent layout) ─────────── */
+
+type ParsedLine = {
+  content: string;
+  fontScale: number;
+  indent: number;
+  bullet: boolean;
+};
+
+function parseLineForEstimate(line: string): ParsedLine {
+  const indentMatch = line.match(/^(\s*)/);
+  const indent = Math.floor((indentMatch?.[1]?.length ?? 0) / 2);
+  let trimmed = line.trimStart();
+
+  let fontScale = 1;
+  if (trimmed.startsWith("# ")) {
+    fontScale = 1.45;
+    trimmed = trimmed.slice(2);
+  } else if (trimmed.startsWith("## ")) {
+    fontScale = 1.2;
+    trimmed = trimmed.slice(3);
+  }
+
+  let bullet = false;
+  if (trimmed.startsWith("• ") || trimmed.startsWith("- ")) {
+    bullet = true;
+    trimmed = trimmed.slice(2);
+  }
+
+  // Strip inline markdown markers for width estimation (bold adds ~10% width).
+  const content = trimmed.replace(/\*\*/g, "").replace(/__/g, "").replace(/\*/g, "").replace(/_/g, "");
+  return { content, fontScale, indent, bullet };
+}
+
+function effectiveLineWidth(boxW: number, indent: number, bullet: boolean): number {
+  const boxPadding = 16; // modules-el__text 8px each side
+  const bulletPad = bullet ? 14 : 0;
+  const indentPad = indent * 18;
+  return Math.max(48, boxW - boxPadding - bulletPad - indentPad);
+}
+
+/** Conservative chars-per-line for Inter at a given size. */
+function charsPerLine(effectiveW: number, fontSize: number, fontScale: number): number {
+  const charWidth = fontSize * fontScale * 0.56;
+  return Math.max(6, Math.floor(effectiveW / charWidth));
+}
+
+function lineBlockHeight(fontSize: number, fontScale: number, wrappedLines: number): number {
+  const lineH = fontSize * fontScale * 1.35;
+  return wrappedLines * (lineH + 2); // +2 matches modules-rich-text__line margin-bottom
+}
 
 /**
- * Estimate the pixel height a block of text will occupy inside a box of
- * the given width using Inter at the given fontSize with line-height 1.5
- * and ~1.7 chars-per-pixel-of-width (empirical for Inter at 16–24px).
+ * Estimate pixel height for rich text inside a box.
+ * Uses conservative wrapping + 18% safety buffer to avoid clipping.
  */
-function estimateTextHeight(text: string, boxW: number, fontSize: number): number {
-  const LINE_H = Math.round(fontSize * 1.5);
-  const charsPerLine = Math.max(1, Math.floor((boxW / fontSize) * 1.7));
+function estimateRichTextHeight(text: string, boxW: number, fontSize: number): number {
+  if (!text.trim()) return Math.round(fontSize * 1.5) + 16;
 
+  let total = 16; // internal padding allowance
   const lines = text.split("\n");
-  let totalLines = 0;
-  for (const line of lines) {
-    totalLines += Math.max(1, Math.ceil(line.trimEnd().length / charsPerLine));
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim()) {
+      total += fontSize * 0.5; // modules-rich-text__spacer
+      continue;
+    }
+
+    const { content, fontScale, indent, bullet } = parseLineForEstimate(line);
+    const effW = effectiveLineWidth(boxW, indent, bullet);
+    const cpl = charsPerLine(effW, fontSize, fontScale);
+    const wrapped = Math.max(1, Math.ceil(content.length / cpl));
+    total += lineBlockHeight(fontSize, fontScale, wrapped);
   }
-  return totalLines * LINE_H + 16; // +16 for internal padding
+
+  return Math.ceil(total * 1.18);
+}
+
+/** Legacy alias used by title sizing. */
+function estimateTextHeight(text: string, boxW: number, fontSize: number): number {
+  return estimateRichTextHeight(text, boxW, fontSize);
 }
 
 /** Clamp a box so it doesn't overflow the stage vertically. */
 function clampH(y: number, h: number, bottomPad = PAD_V): number {
   return Math.min(h, STAGE_H - y - bottomPad);
+}
+
+/** Split body text into chunks that each fit within maxChunkH. */
+function splitBodyIntoChunks(text: string, boxW: number, fontSize: number, maxChunkH: number): string[] {
+  const trimmed = text.trim();
+  if (!trimmed) return [""];
+  if (estimateRichTextHeight(trimmed, boxW, fontSize) <= maxChunkH) return [trimmed];
+
+  // Prefer splitting at ## section headings or blank-line paragraph breaks.
+  const parts = trimmed.split(/(?=\n## )|\n\n+/).map((p) => p.trim()).filter(Boolean);
+  if (parts.length <= 1) {
+    // Fall back: split by single lines, packing greedily.
+    const lineParts = trimmed.split("\n");
+    const chunks: string[] = [];
+    let current = "";
+    for (const line of lineParts) {
+      const candidate = current ? `${current}\n${line}` : line;
+      if (estimateRichTextHeight(candidate, boxW, fontSize) <= maxChunkH) {
+        current = candidate;
+      } else {
+        if (current) chunks.push(current);
+        current = line;
+      }
+    }
+    if (current) chunks.push(current);
+    return chunks.length ? chunks : [trimmed];
+  }
+
+  const chunks: string[] = [];
+  let current = "";
+  for (const part of parts) {
+    const candidate = current ? `${current}\n\n${part}` : part;
+    if (estimateRichTextHeight(candidate, boxW, fontSize) <= maxChunkH) {
+      current = candidate;
+    } else {
+      if (current) chunks.push(current);
+      if (estimateRichTextHeight(part, boxW, fontSize) <= maxChunkH) {
+        current = part;
+      } else {
+        chunks.push(...splitBodyIntoChunks(part, boxW, fontSize, maxChunkH));
+        current = "";
+      }
+    }
+  }
+  if (current) chunks.push(current);
+  return chunks.length ? chunks : [trimmed];
+}
+
+const BODY_BOX_GAP = 8;
+
+/** Build one or more stacked body text elements that fit on the slide. */
+function buildStackedTextElements(
+  text: string,
+  x: number,
+  startY: number,
+  textW: number,
+  fontSize: number,
+  color: string,
+  zStart: number,
+  bottomPad = PAD_V,
+): TextEl[] {
+  const bottom = STAGE_H - bottomPad;
+  const maxTotalH = bottom - startY;
+  if (maxTotalH < 40 || !text.trim()) return [];
+
+  const totalEst = estimateRichTextHeight(text, textW, fontSize);
+  if (totalEst <= maxTotalH) {
+    return [
+      textEl(text, zStart, {
+        x,
+        y: startY,
+        w: textW,
+        h: totalEst,
+        fontSize,
+        fontWeight: 400,
+        fontStyle: FONT,
+        color,
+        align: "left",
+      }),
+    ];
+  }
+
+  const chunks = splitBodyIntoChunks(text, textW, fontSize, maxTotalH);
+  const elements: TextEl[] = [];
+  let y = startY;
+  let z = zStart;
+
+  for (const chunk of chunks) {
+    const avail = bottom - y;
+    if (avail < 36) break;
+    const h = Math.min(estimateRichTextHeight(chunk, textW, fontSize), avail);
+    elements.push(
+      textEl(chunk, z++, {
+        x,
+        y,
+        w: textW,
+        h,
+        fontSize,
+        fontWeight: 400,
+        fontStyle: FONT,
+        color,
+        align: "left",
+      }),
+    );
+    y += h + BODY_BOX_GAP;
+  }
+
+  return elements;
 }
 
 /* ── Slide builders ────────────────────────────────────────────── */
@@ -175,7 +348,7 @@ function buildTitleSlide(s: ResolvedSpec): TextEl[] {
         fontSize: s.bfs,
         fontWeight: 400,
         fontStyle: FONT,
-        color: s.bodyColor,
+        color: s.bodyColor ?? "#374151",
         align: "center",
       }),
     );
@@ -183,51 +356,30 @@ function buildTitleSlide(s: ResolvedSpec): TextEl[] {
   return elements;
 }
 
-// ── title-body: title + body paragraph/bullets ──────────────────
-function buildTitleBodySlide(s: ResolvedSpec): TextEl[] {
-  const titleY = PAD_V;
-  const titleH = clampH(titleY, estimateTextHeight(s.title, BODY_W, s.tfs) + 8, 20);
-  const bodyY = titleY + titleH + 20;
-  const bodyH = clampH(bodyY, estimateTextHeight(s.body ?? "", BODY_W, s.bfs), PAD_V);
+// Accent illustration on text-heavy layouts (smaller than image-right panel).
+const ACCENT_IMG = { x: 620, y: 100, w: 300, h: 360 };
+const TEXT_W_WITH_ACCENT = 520;
 
+function addAccentImage(elements: Slide["elements"], imageSrc: string): Slide["elements"] {
   return [
-    textEl(s.title, 1, {
-      x: PAD_H,
-      y: titleY,
-      w: BODY_W,
-      h: titleH,
-      fontSize: s.tfs,
-      fontWeight: 700,
-      fontStyle: FONT,
-      color: s.titleColor,
-      align: s.titleAlign,
-    }),
-    textEl(s.body ?? "", 2, {
-      x: PAD_H,
-      y: bodyY,
-      w: BODY_W,
-      h: bodyH,
-      fontSize: s.bfs,
-      fontWeight: 400,
-      fontStyle: FONT,
-      color: s.bodyColor,
-      align: "left",
-    }),
+    createImageElement(imageSrc, 1, ACCENT_IMG),
+    ...elements,
   ];
 }
 
-// ── bullets: title + section-break bullets ──────────────────────
-function buildBulletsSlide(s: ResolvedSpec): TextEl[] {
-  const titleY = PAD_V - 4;
-  const titleH = clampH(titleY, estimateTextHeight(s.title, BODY_W, s.tfs) + 8, 16);
-  const bodyY = titleY + titleH + 18;
-  const bodyH = clampH(bodyY, estimateTextHeight(s.body ?? "", BODY_W, s.bfs), PAD_V);
+// ── title-body: title + body paragraph/bullets ──────────────────
+function buildTitleBodySlide(s: ResolvedSpec, imageSrc?: string): Slide["elements"] {
+  const hasAccent = Boolean(imageSrc);
+  const textW = hasAccent ? TEXT_W_WITH_ACCENT : BODY_W;
+  const titleY = PAD_V;
+  const titleH = clampH(titleY, estimateTextHeight(s.title, textW, s.tfs) + 8, 20);
+  const bodyY = titleY + titleH + 20;
 
-  return [
-    textEl(s.title, 1, {
+  const elements: Slide["elements"] = [
+    textEl(s.title, 2, {
       x: PAD_H,
       y: titleY,
-      w: BODY_W,
+      w: textW,
       h: titleH,
       fontSize: s.tfs,
       fontWeight: 700,
@@ -235,18 +387,38 @@ function buildBulletsSlide(s: ResolvedSpec): TextEl[] {
       color: s.titleColor,
       align: s.titleAlign,
     }),
-    textEl(s.body ?? "", 2, {
-      x: PAD_H,
-      y: bodyY,
-      w: BODY_W,
-      h: bodyH,
-      fontSize: s.bfs,
-      fontWeight: 400,
-      fontStyle: FONT,
-      color: s.bodyColor,
-      align: "left",
-    }),
+    ...buildStackedTextElements(s.body ?? "", PAD_H, bodyY, textW, s.bfs, s.bodyColor ?? "#374151", 3),
   ];
+
+  if (imageSrc) return addAccentImage(elements, imageSrc);
+  return elements;
+}
+
+// ── bullets: title + section-break bullets ──────────────────────
+function buildBulletsSlide(s: ResolvedSpec, imageSrc?: string): Slide["elements"] {
+  const hasAccent = Boolean(imageSrc);
+  const textW = hasAccent ? TEXT_W_WITH_ACCENT : BODY_W;
+  const titleY = PAD_V - 4;
+  const titleH = clampH(titleY, estimateTextHeight(s.title, textW, s.tfs) + 8, 16);
+  const bodyY = titleY + titleH + 18;
+
+  const elements: Slide["elements"] = [
+    textEl(s.title, 2, {
+      x: PAD_H,
+      y: titleY,
+      w: textW,
+      h: titleH,
+      fontSize: s.tfs,
+      fontWeight: 700,
+      fontStyle: FONT,
+      color: s.titleColor,
+      align: s.titleAlign,
+    }),
+    ...buildStackedTextElements(s.body ?? "", PAD_H, bodyY, textW, s.bfs, s.bodyColor ?? "#374151", 3),
+  ];
+
+  if (imageSrc) return addAccentImage(elements, imageSrc);
+  return elements;
 }
 
 // ── two-column: title + left column + right column ──────────────
@@ -258,10 +430,17 @@ function buildTwoColumnSlide(s: ResolvedSpec): TextEl[] {
   const bodyY = 32 + titleH + 18;
   const leftText = s.leftBody ?? s.body ?? "";
   const rightText = s.rightBody ?? "";
-  const bodyH = clampH(bodyY, Math.max(
-    estimateTextHeight(leftText, colW, s.bfs),
-    estimateTextHeight(rightText, colW, s.bfs),
-  ), PAD_V);
+
+  const leftElements = buildStackedTextElements(leftText, colPad, bodyY, colW, s.bfs, s.bodyColor ?? "#374151", 2);
+  const rightElements = buildStackedTextElements(
+    rightText,
+    colPad + colW + gutter,
+    bodyY,
+    colW,
+    s.bfs,
+    s.bodyColor ?? "#374151",
+    2 + leftElements.length,
+  );
 
   return [
     textEl(s.title, 1, {
@@ -275,46 +454,26 @@ function buildTwoColumnSlide(s: ResolvedSpec): TextEl[] {
       color: s.titleColor,
       align: s.titleAlign,
     }),
-    textEl(leftText, 2, {
-      x: colPad,
-      y: bodyY,
-      w: colW,
-      h: bodyH,
-      fontSize: s.bfs,
-      fontWeight: 400,
-      fontStyle: FONT,
-      color: s.bodyColor,
-      align: "left",
-    }),
-    textEl(rightText, 3, {
-      x: colPad + colW + gutter,
-      y: bodyY,
-      w: colW,
-      h: bodyH,
-      fontSize: s.bfs,
-      fontWeight: 400,
-      fontStyle: FONT,
-      color: s.bodyColor,
-      align: "left",
-    }),
+    ...leftElements,
+    ...rightElements,
   ];
 }
 
 // ── image-right: text left, image right ─────────────────────────
 function buildImageRightSlide(s: ResolvedSpec, imageSrc?: string): Slide["elements"] {
+  const textX = PAD_H - 24;
   const textW = imageSrc ? 490 : BODY_W;
   const imgX = 524;
   const imgW = MODULES_STAGE_W - imgX - 36;
   const imgY = 32;
   const imgH = STAGE_H - imgY - PAD_V;
 
-  const titleH = clampH(PAD_V, estimateTextHeight(s.title, textW - 16, s.tfs) + 8, 16);
+  const titleH = clampH(PAD_V, estimateTextHeight(s.title, textW, s.tfs) + 8, 16);
   const bodyY = PAD_V + titleH + 18;
-  const bodyH = clampH(bodyY, estimateTextHeight(s.body ?? "", textW - 16, s.bfs), PAD_V);
 
   const elements: Slide["elements"] = [
     textEl(s.title, 2, {
-      x: PAD_H - 24,
+      x: textX,
       y: PAD_V,
       w: textW,
       h: titleH,
@@ -324,17 +483,7 @@ function buildImageRightSlide(s: ResolvedSpec, imageSrc?: string): Slide["elemen
       color: s.titleColor,
       align: s.titleAlign,
     }),
-    textEl(s.body ?? "", 3, {
-      x: PAD_H - 24,
-      y: bodyY,
-      w: textW,
-      h: bodyH,
-      fontSize: s.bfs,
-      fontWeight: 400,
-      fontStyle: FONT,
-      color: s.bodyColor,
-      align: "left",
-    }),
+    ...buildStackedTextElements(s.body ?? "", textX, bodyY, textW, s.bfs, s.bodyColor ?? "#374151", 3),
   ];
 
   if (imageSrc) {
@@ -359,9 +508,8 @@ function buildImageLeftSlide(s: ResolvedSpec, imageSrc?: string): Slide["element
   const textX = imageSrc ? imgX + imgW + 24 : PAD_H;
   const textW = imageSrc ? MODULES_STAGE_W - textX - (PAD_H - 24) : BODY_W;
 
-  const titleH = clampH(PAD_V, estimateTextHeight(s.title, textW - 16, s.tfs) + 8, 16);
+  const titleH = clampH(PAD_V, estimateTextHeight(s.title, textW, s.tfs) + 8, 16);
   const bodyY = PAD_V + titleH + 18;
-  const bodyH = clampH(bodyY, estimateTextHeight(s.body ?? "", textW - 16, s.bfs), PAD_V);
 
   const elements: Slide["elements"] = [
     textEl(s.title, 2, {
@@ -375,17 +523,7 @@ function buildImageLeftSlide(s: ResolvedSpec, imageSrc?: string): Slide["element
       color: s.titleColor,
       align: s.titleAlign,
     }),
-    textEl(s.body ?? "", 3, {
-      x: textX,
-      y: bodyY,
-      w: textW,
-      h: bodyH,
-      fontSize: s.bfs,
-      fontWeight: 400,
-      fontStyle: FONT,
-      color: s.bodyColor,
-      align: "left",
-    }),
+    ...buildStackedTextElements(s.body ?? "", textX, bodyY, textW, s.bfs, s.bodyColor ?? "#374151", 3),
   ];
 
   if (imageSrc) {
@@ -431,7 +569,7 @@ function buildImageHeroSlide(s: ResolvedSpec): TextEl[] {
         fontSize: s.bfs,
         fontWeight: 400,
         fontStyle: FONT,
-        color: s.bodyColor,
+        color: s.bodyColor ?? "#374151",
         align: "center",
       }),
     );
@@ -467,7 +605,7 @@ export function buildSlideFromGenerated(
       slide.elements = buildTitleSlide(s);
       break;
     case "bullets":
-      slide.elements = buildBulletsSlide(s);
+      slide.elements = buildBulletsSlide(s, assets.imageSrc);
       break;
     case "two-column":
       slide.elements = buildTwoColumnSlide(s);
@@ -482,7 +620,7 @@ export function buildSlideFromGenerated(
       slide.elements = buildImageHeroSlide(s);
       break;
     default:
-      slide.elements = buildTitleBodySlide(s);
+      slide.elements = buildTitleBodySlide(s, assets.imageSrc);
   }
 
   return slide;
