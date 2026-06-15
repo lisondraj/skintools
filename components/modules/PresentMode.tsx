@@ -57,7 +57,7 @@ export function PresentMode({ deck, startIndex = 0, onExit }: Props) {
           <PatientSimSlidePreview slide={current} />
           <button
             type="button"
-            className="modules-btn modules-btn--present"
+            className="modules-btn modules-btn--primary"
             onClick={() => setSimActive(true)}
           >
             Start patient conversation

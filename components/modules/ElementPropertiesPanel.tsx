@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import type { AutofillMode, Slide, SlideElement, TextElement } from "@/lib/modules/types";
 import { SLIDE_TEMPLATES, type SlideTemplateId } from "@/lib/modules/templates";
 import { SELECTION_AI_ACTIONS, TEXT_AI_ACTIONS } from "@/lib/modules/ai-actions";
+import { SLIDE_FONT_STYLES } from "@/lib/modules/fonts";
 
 export type TextSelectionInfo = {
   elementId: string;
@@ -330,6 +331,25 @@ export function ElementPropertiesPanel({
                   </button>
                 </>
               )}
+
+              <div className="modules-field">
+                <span className="modules-field__label">Font</span>
+                <div className="modules-panel__font-grid">
+                  {SLIDE_FONT_STYLES.map((font) => (
+                    <button
+                      key={font.id}
+                      type="button"
+                      className={`modules-panel__font-btn${(selectedElement.fontStyle ?? "inter") === font.id ? " is-active" : ""}`}
+                      style={{ fontFamily: font.cssFamily }}
+                      onClick={() => onUpdateText(selectedElement.id, { fontStyle: font.id })}
+                      title={font.label}
+                    >
+                      <span className="modules-panel__font-sample">Aa</span>
+                      <span className="modules-panel__font-name">{font.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               <label className="modules-field">
                 <span className="modules-field__label">Size ({selectedElement.fontSize}px)</span>

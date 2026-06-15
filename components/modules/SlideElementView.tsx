@@ -1,6 +1,7 @@
 "use client";
 
 import type { SlideElement } from "@/lib/modules/types";
+import { getFontFamily } from "@/lib/modules/fonts";
 
 type Props = {
   element: SlideElement;
@@ -38,6 +39,7 @@ export function SlideElementView({
           style={{
             fontSize: element.fontSize * scale,
             fontWeight: element.fontWeight,
+            fontFamily: getFontFamily(element.fontStyle),
             color: element.color,
             textAlign: element.align,
           }}

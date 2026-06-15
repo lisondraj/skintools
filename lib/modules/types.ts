@@ -3,6 +3,9 @@ export const MODULES_STAGE_H = 540;
 
 export type TextAlign = "left" | "center" | "right";
 
+/** Font style id — see SLIDE_FONT_STYLES in lib/modules/fonts.ts */
+export type TextFontStyle = string;
+
 export interface TextElement {
   kind: "text";
   id: string;
@@ -14,6 +17,7 @@ export interface TextElement {
   text: string;
   fontSize: number;
   fontWeight: number;
+  fontStyle: TextFontStyle;
   color: string;
   align: TextAlign;
 }

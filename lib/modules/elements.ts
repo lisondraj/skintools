@@ -1,5 +1,6 @@
 import type { SlideElement, TextElement } from "@/lib/modules/types";
 import { MODULES_STAGE_H, MODULES_STAGE_W } from "@/lib/modules/types";
+import { DEFAULT_FONT_STYLE } from "@/lib/modules/fonts";
 
 export function createTextElement(
   text = "Double-click to edit",
@@ -17,6 +18,7 @@ export function createTextElement(
     text,
     fontSize: 28,
     fontWeight: 500,
+    fontStyle: DEFAULT_FONT_STYLE,
     color: "#111111",
     align: "left",
     ...overrides,

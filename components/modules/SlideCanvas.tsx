@@ -10,6 +10,7 @@ import {
 import type { PatientSimConfig, Slide, SlideElement } from "@/lib/modules/types";
 import { MODULES_STAGE_H, MODULES_STAGE_W } from "@/lib/modules/types";
 import { clampElement, sortByZ } from "@/lib/modules/elements";
+import { getFontFamily } from "@/lib/modules/fonts";
 import { SlideElementView } from "./SlideElementView";
 import { PatientSimConfigPanel } from "./PatientSimConfigPanel";
 
@@ -155,6 +156,7 @@ export function SlideCanvas({
         height: el.h * scale,
         fontSize: el.fontSize * scale,
         fontWeight: el.fontWeight,
+        fontFamily: getFontFamily(el.fontStyle),
         color: el.color,
         textAlign: el.align,
       },

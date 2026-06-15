@@ -13,42 +13,52 @@ type Props = {
   autoStart?: boolean;
 };
 
-/** Animate an orb driven by an audio level (0–1). */
-function SpeakingOrb({ level, status }: { level: number; status: SimStatus }) {
-  const scale = 1 + level * 0.55;
-  const opacity = status === "speaking" ? 0.85 + level * 0.15 : 0.4;
-  const rings = status === "speaking" ? level : 0;
-
-  const color =
-    status === "error"
-      ? "#ef4444"
-      : status === "ended"
-        ? "rgba(0,0,0,0.15)"
-        : status === "connecting"
-          ? "#f59e0b"
-          : "#6366f1";
-
+function AudioBars({ level, active }: { level: number; active: boolean }) {
   return (
-    <div className="sim-orb-wrap" aria-hidden>
-      {/* outer ripple rings */}
-      {[1, 2, 3].map((i) => (
+    <div className="vsp-bars" aria-hidden>
+      {[0.35, 0.55, 0.75, 0.55, 0.35].map((mult, i) => (
         <span
           key={i}
-          className="sim-orb-ring"
+          className={`vsp-bars__bar${active ? " is-active" : ""}`}
           style={{
-            transform: `scale(${1 + rings * 0.35 * i})`,
-            opacity: rings * (0.18 / i),
-            borderColor: color,
+            transform: active ? `scaleY(${0.25 + level * mult * 1.4})` : "scaleY(0.2)",
           }}
         />
       ))}
-      {/* core orb */}
+    </div>
+  );
+}
+
+function SpeakingOrb({ level, status }: { level: number; status: SimStatus }) {
+  const active = status === "listening" || status === "speaking";
+  const scale = 1 + level * 0.35;
+  const color =
+    status === "error"
+      ? "#dc2626"
+      : status === "connecting"
+        ? "#d97706"
+        : status === "speaking"
+          ? "#4f46e5"
+          : status === "listening"
+            ? "#059669"
+            : "#a3a3a3";
+
+  return (
+    <div className="vsp-orb" aria-hidden>
       <span
-        className="sim-orb-core"
+        className={`vsp-orb__ring${active ? " is-active" : ""}`}
+        style={{
+          transform: `scale(${1 + level * 0.5})`,
+          borderColor: color,
+          opacity: active ? 0.35 + level * 0.4 : 0.15,
+        }}
+      />
+      <span
+        className="vsp-orb__core"
         style={{
           transform: `scale(${scale})`,
-          opacity,
           background: color,
+          opacity: status === "ended" ? 0.35 : 0.9,
         }}
       />
     </div>
@@ -65,6 +75,7 @@ export function PatientSimRunner({ sim, onEnd, autoStart = false }: Props) {
   const convRef = useRef<Awaited<ReturnType<typeof Conversation.startSession>> | null>(null);
   const startedRef = useRef(false);
   const animFrameRef = useRef<number>(0);
+  const transcriptRef = useRef<HTMLDivElement>(null);
 
   const cleanup = useCallback(() => {
     cancelAnimationFrame(animFrameRef.current);
@@ -81,6 +92,10 @@ export function PatientSimRunner({ sim, onEnd, autoStart = false }: Props) {
     convRef.current?.setMicMuted(muted);
   }, [muted]);
 
+  useEffect(() => {
+    transcriptRef.current?.scrollTo({ top: transcriptRef.current.scrollHeight });
+  }, [transcript]);
+
   const start = useCallback(async () => {
     setError("");
     setStatus("connecting");
@@ -96,13 +111,9 @@ export function PatientSimRunner({ sim, onEnd, autoStart = false }: Props) {
             prompt: { prompt: session.instructions },
             firstMessage: "Hello. I'm ready when you are. What would you like to know?",
           },
-          tts: {
-            voiceId: session.voiceId,
-          },
+          tts: { voiceId: session.voiceId },
         },
-        onConnect: () => {
-          setStatus("listening");
-        },
+        onConnect: () => setStatus("listening"),
         onDisconnect: () => {
           setStatus("ended");
           setAudioLevel(0);
@@ -112,26 +123,22 @@ export function PatientSimRunner({ sim, onEnd, autoStart = false }: Props) {
           setStatus("error");
         },
         onModeChange: ({ mode }: { mode: "speaking" | "listening" }) => {
-          if (mode === "speaking") setStatus("speaking");
-          else setStatus("listening");
+          setStatus(mode === "speaking" ? "speaking" : "listening");
         },
         onMessage: ({ message, source }: { message: string; source: "user" | "ai" }) => {
-          if (source === "ai") {
-            setTranscript((prev) => [...prev, { role: "patient", text: message }]);
-          } else {
-            setTranscript((prev) => [...prev, { role: "you", text: message }]);
-          }
+          setTranscript((prev) => [
+            ...prev,
+            { role: source === "ai" ? "patient" : "you", text: message },
+          ]);
         },
       });
 
       convRef.current = conv;
 
-      // Drive orb from volume level
       function tick() {
         const vol = conv.getInputVolume?.() ?? 0;
         const agentVol = conv.getOutputVolume?.() ?? 0;
-        const level = Math.max(vol, agentVol);
-        setAudioLevel(Number(level.toFixed(3)));
+        setAudioLevel(Number(Math.max(vol, agentVol).toFixed(3)));
         animFrameRef.current = requestAnimationFrame(tick);
       }
       animFrameRef.current = requestAnimationFrame(tick);
@@ -143,9 +150,7 @@ export function PatientSimRunner({ sim, onEnd, autoStart = false }: Props) {
   }, [cleanup, sim]);
 
   useEffect(() => {
-    if (autoStart && !startedRef.current) {
-      void start();
-    }
+    if (autoStart && !startedRef.current) void start();
   }, [autoStart, start]);
 
   function handleEnd() {
@@ -155,60 +160,78 @@ export function PatientSimRunner({ sim, onEnd, autoStart = false }: Props) {
   }
 
   const statusLabel: Record<SimStatus, string> = {
-    idle: "Ready to start",
-    connecting: "Connecting…",
-    listening: "Listening — speak to the patient",
-    speaking: "Patient is speaking…",
-    error: "Connection failed",
-    ended: "Session ended",
+    idle: "Ready",
+    connecting: "Connecting",
+    listening: "Listening",
+    speaking: "Patient speaking",
+    error: "Error",
+    ended: "Ended",
   };
 
-  return (
-    <div className="modules-sim-runner">
-      <SpeakingOrb level={audioLevel} status={status} />
+  const isLive = status === "listening" || status === "speaking" || status === "connecting";
 
-      <div className="modules-sim-runner__status-row">
-        <span className={`modules-sim-runner__dot modules-sim-runner__dot--${status}`} />
-        <span className="modules-sim-runner__status-text">{statusLabel[status]}</span>
+  return (
+    <div className="vsp-runner">
+      <header className="vsp-runner__header">
+        <div>
+          <span className="vsp-runner__eyebrow">Virtual patient</span>
+          <p className="vsp-runner__persona">{sim.persona}</p>
+        </div>
+        <span className={`vsp-runner__pill vsp-runner__pill--${status}`}>
+          {statusLabel[status]}
+        </span>
+      </header>
+
+      <div className="vsp-runner__stage">
+        <SpeakingOrb level={audioLevel} status={status} />
+        <AudioBars level={audioLevel} active={isLive} />
+        <p className="vsp-runner__hint">
+          {status === "idle" && "Start when you're ready to practice the consultation."}
+          {status === "connecting" && "Setting up voice connection…"}
+          {status === "listening" && "Speak naturally — the patient is listening."}
+          {status === "speaking" && "Patient is responding…"}
+          {status === "error" && "Something went wrong. You can retry or skip."}
+          {status === "ended" && "Session complete."}
+        </p>
       </div>
 
       {status === "error" && error && (
-        <div className="modules-sim-runner__error">{error}</div>
+        <div className="vsp-runner__error">{error}</div>
       )}
 
       {transcript.length > 0 && (
-        <div className="modules-sim-runner__transcript">
-          {transcript.slice(-8).map((line, i) => (
-            <p
-              key={`${i}-${line.text.slice(0, 12)}`}
-              className={`modules-sim-runner__line modules-sim-runner__line--${line.role}`}
+        <div className="vsp-runner__transcript" ref={transcriptRef}>
+          {transcript.map((line, i) => (
+            <div
+              key={`${i}-${line.text.slice(0, 16)}`}
+              className={`vsp-bubble vsp-bubble--${line.role}`}
             >
-              <span className="modules-sim-runner__line-label">
+              <span className="vsp-bubble__label">
                 {line.role === "patient" ? "Patient" : "You"}
               </span>
-              {line.text}
-            </p>
+              <p className="vsp-bubble__text">{line.text}</p>
+            </div>
           ))}
         </div>
       )}
 
-      <div className="modules-sim-runner__actions">
+      <footer className="vsp-runner__actions">
         {status === "idle" && (
-          <button type="button" className="modules-btn" onClick={() => void start()}>
+          <button type="button" className="modules-btn modules-btn--primary" onClick={() => void start()}>
             Start conversation
           </button>
         )}
-        {(status === "listening" || status === "speaking" || status === "connecting") && (
+        {isLive && (
           <>
             <button
               type="button"
               className={`modules-btn modules-btn--secondary${muted ? " is-active" : ""}`}
               onClick={() => setMuted((m) => !m)}
             >
-              {muted ? "Unmute mic" : "Mute mic"}
+              {muted ? "Unmute" : "Mute"}
             </button>
             <button type="button" className="modules-btn" onClick={handleEnd}>
-              End &amp; continue
+              End session
             </button>
           </>
         )}
@@ -216,7 +239,7 @@ export function PatientSimRunner({ sim, onEnd, autoStart = false }: Props) {
           <>
             <button
               type="button"
-              className="modules-btn"
+              className="modules-btn modules-btn--primary"
               onClick={() => {
                 startedRef.current = false;
                 void start();
@@ -230,11 +253,11 @@ export function PatientSimRunner({ sim, onEnd, autoStart = false }: Props) {
           </>
         )}
         {status === "ended" && (
-          <button type="button" className="modules-btn" onClick={onEnd}>
-            Continue
+          <button type="button" className="modules-btn modules-btn--primary" onClick={onEnd}>
+            Continue presentation
           </button>
         )}
-      </div>
+      </footer>
     </div>
   );
 }
