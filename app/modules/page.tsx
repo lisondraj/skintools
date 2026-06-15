@@ -9,7 +9,16 @@ import { ImageLibrary } from "@/components/modules/ImageLibrary";
 import { DeckGeneratorModal } from "@/components/modules/DeckGeneratorModal";
 import { PresentMode } from "@/components/modules/PresentMode";
 import { SpeakerNotesBar } from "@/components/modules/SpeakerNotesBar";
+import { ModulesLoadingOverlay } from "@/components/modules/ModulesLoadingOverlay";
 import { autofillSlide, autofillText, generateDeck, generateSlideImage } from "@/lib/modules/client";
+import { fitImageElementToNaturalSize } from "@/lib/modules/image-fit";
+import {
+  DECK_LOADING_PHASES,
+  runWithLoadingLabel,
+  runWithLoadingProgress,
+  SLIDE_LOADING_PHASES,
+  type LoadingUpdate,
+} from "@/lib/modules/loading-progress";
 import {
   clampElement,
   createImageElement,
@@ -50,6 +59,8 @@ export default function ModulesPage() {
   const [presenting, setPresenting] = useState(false);
   const [presentStartIndex, setPresentStartIndex] = useState(0);
   const [autofillBusy, setAutofillBusy] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState<LoadingUpdate | null>(null);
+  const [backgroundLoading, setBackgroundLoading] = useState(false);
   const [textSelection, setTextSelection] = useState<TextSelectionInfo | null>(null);
   const [error, setError] = useState("");
   const [notesOpen, setNotesOpen] = useState(false);
@@ -74,15 +85,39 @@ export default function ModulesPage() {
     [activeIndex, deck, selectedElementId],
   );
 
-  const refreshDeck = useCallback(() => setDeck(getDeck()), []);
+  const setBusyLoading = useCallback((update: LoadingUpdate | null) => {
+    setLoadingProgress(update);
+    setAutofillBusy(update !== null);
+  }, []);
+
+  const updateElementsForSlide = useCallback(
+    (slideId: string, elements: SlideElement[]) => {
+      if (!deck) return;
+      const next = updateSlide(slideId, (slide) => ({ ...slide, elements }));
+      if (next) setDeck(next);
+    },
+    [deck],
+  );
 
   const updateElements = useCallback(
     (elements: SlideElement[]) => {
       if (!deck || !activeSlide) return;
-      updateSlide(activeSlide.id, (slide) => ({ ...slide, elements }));
-      refreshDeck();
+      updateElementsForSlide(activeSlide.id, elements);
     },
-    [activeSlide, deck, refreshDeck],
+    [activeSlide, deck, updateElementsForSlide],
+  );
+
+  const handleImageLoad = useCallback(
+    (id: string, naturalWidth: number, naturalHeight: number) => {
+      if (!activeSlide) return;
+      updateElements(
+        activeSlide.elements.map((el) => {
+          if (el.id !== id || el.kind !== "image" || el.loading) return el;
+          return fitImageElementToNaturalSize(el, naturalWidth, naturalHeight);
+        }),
+      );
+    },
+    [activeSlide, updateElements],
   );
 
   const handleDeleteElement = useCallback(() => {
@@ -163,12 +198,55 @@ export default function ModulesPage() {
     setLibraryOpen(false);
   }
 
+  async function handleGenerateImageOnSlide(
+    prompt: string,
+    qualityMode: "fast" | "quality" = "fast",
+  ) {
+    if (!activeSlide || activeSlide.kind !== "content") return;
+    const slideId = activeSlide.id;
+    const placeholder = createImageElement("", nextElementZ(activeSlide.elements), { loading: true });
+    const placeholderId = placeholder.id;
+
+    updateElements([...activeSlide.elements, placeholder]);
+    setSelectedElementId(placeholderId);
+    setLibraryOpen(false);
+
+    try {
+      await runWithLoadingLabel("Adding image…", setBusyLoading, async () => {
+        const src = await generateSlideImage({
+          prompt: prompt.trim(),
+          purpose: "image",
+          qualityMode,
+        });
+        const current = getDeck()?.slides.find((s) => s.id === slideId);
+        if (!current) return;
+        updateElementsForSlide(
+          slideId,
+          current.elements.map((el) =>
+            el.id === placeholderId && el.kind === "image"
+              ? { ...el, src, loading: false }
+              : el,
+          ),
+        );
+      });
+    } catch (err) {
+      const current = getDeck()?.slides.find((s) => s.id === slideId);
+      if (current) {
+        updateElementsForSlide(
+          slideId,
+          current.elements.filter((el) => el.id !== placeholderId),
+        );
+      }
+      setError(err instanceof Error ? err.message : "Image generation failed.");
+    }
+  }
+
   async function handleAutofill(mode: AutofillMode, prompt?: string) {
     if (!deck || !activeSlide || activeSlide.kind !== "content") return;
     const selected = activeSlide.elements.find((el) => el.id === selectedElementId);
     const ctx = getSlideContext();
 
-    setAutofillBusy(true);
+    setBusyLoading({ label: "Writing content…", progress: 8 });
     setError("");
     try {
       const useSelection =
@@ -205,108 +283,107 @@ export default function ModulesPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Autofill failed.");
     } finally {
-      setAutofillBusy(false);
+      setBusyLoading(null);
     }
   }
 
   async function handleGenerateNotes() {
     if (!deck || !activeSlide || activeSlide.kind !== "content") return;
-    setAutofillBusy(true);
     setError("");
     try {
-      const ctx = getSlideContext();
-      const notes = await autofillText({
-        mode: "notes",
-        deckTitle: deck.title,
-        slideContext: ctx.text,
-        contextImages: ctx.images,
+      await runWithLoadingLabel("Writing speaker notes…", setBusyLoading, async () => {
+        const ctx = getSlideContext();
+        const notes = await autofillText({
+          mode: "notes",
+          deckTitle: deck.title,
+          slideContext: ctx.text,
+          contextImages: ctx.images,
+        });
+        const next = updateSlide(activeSlide.id, (slide) => ({ ...slide, notes }));
+        if (next) setDeck(next);
+        setNotesOpen(true);
       });
-      const next = updateSlide(activeSlide.id, (slide) => ({ ...slide, notes }));
-      if (next) setDeck(next);
-      setNotesOpen(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Notes generation failed.");
-    } finally {
-      setAutofillBusy(false);
     }
   }
 
   async function handleGenerateSlide(prompt: string) {
     if (!deck || !activeSlide || activeSlide.kind !== "content") return;
-    setAutofillBusy(true);
     setError("");
     try {
-      const ctx = getSlideContext();
-      const result = await autofillSlide({
-        prompt,
-        deckTitle: deck.title,
-        slideContext: ctx.text,
-        contextImages: ctx.images,
+      await runWithLoadingProgress(SLIDE_LOADING_PHASES, setBusyLoading, async () => {
+        const ctx = getSlideContext();
+        const result = await autofillSlide({
+          prompt,
+          deckTitle: deck.title,
+          slideContext: ctx.text,
+          contextImages: ctx.images,
+        });
+        const next = updateSlide(activeSlide.id, (slide) => ({
+          ...slide,
+          elements: result.elements,
+          background: result.background,
+          notes: result.notes ?? slide.notes,
+        }));
+        if (next) setDeck(next);
+        setSelectedElementId(result.elements[0]?.id ?? null);
+        if (result.notes?.trim()) setNotesOpen(true);
       });
-      const next = updateSlide(activeSlide.id, (slide) => ({
-        ...slide,
-        elements: result.elements,
-        background: result.background,
-        notes: result.notes ?? slide.notes,
-      }));
-      if (next) setDeck(next);
-      setSelectedElementId(result.elements[0]?.id ?? null);
-      if (result.notes?.trim()) setNotesOpen(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Slide generation failed.");
-    } finally {
-      setAutofillBusy(false);
     }
   }
 
   async function handleGenerateDeck(prompt: string, slideCount: number) {
     if (!deck) return;
-    setAutofillBusy(true);
     setError("");
     try {
-      const deckCtx = buildDeckAIContext(deck);
-      const result = await generateDeck({
-        prompt,
-        slideCount,
-        deckTitle: deck.title,
-        slideContext: deckCtx.text,
-        contextImages: deckCtx.images,
-      });
+      await runWithLoadingProgress(DECK_LOADING_PHASES, setBusyLoading, async () => {
+        const deckCtx = buildDeckAIContext(deck);
+        const result = await generateDeck({
+          prompt,
+          slideCount,
+          deckTitle: deck.title,
+          slideContext: deckCtx.text,
+          contextImages: deckCtx.images,
+        });
 
-      const next: Deck = {
-        ...deck,
-        title: result.deckTitle,
-        slides: result.slides,
-        updatedAt: Date.now(),
-      };
-      saveDeck(next);
-      setDeck(next);
-      setActiveIndex(0);
-      setSelectedElementId(null);
-      setDeckGenOpen(false);
+        const next: Deck = {
+          ...deck,
+          title: result.deckTitle,
+          slides: result.slides,
+          updatedAt: Date.now(),
+        };
+        saveDeck(next);
+        setDeck(next);
+        setActiveIndex(0);
+        setSelectedElementId(null);
+        setDeckGenOpen(false);
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Deck generation failed.");
-    } finally {
-      setAutofillBusy(false);
     }
   }
 
   async function handleGenerateBackground(prompt: string) {
     if (!deck || !activeSlide || activeSlide.kind !== "content") return;
-    setAutofillBusy(true);
+    setBackgroundLoading(true);
     setError("");
     try {
-      const image = await generateSlideImage({
-        prompt,
-        purpose: "background",
-        qualityMode: "fast",
+      await runWithLoadingLabel("Generating background…", setBusyLoading, async () => {
+        const image = await generateSlideImage({
+          prompt,
+          purpose: "background",
+          qualityMode: "fast",
+        });
+        const next = updateSlide(activeSlide.id, (slide) => ({ ...slide, background: image }));
+        if (next) setDeck(next);
       });
-      const next = updateSlide(activeSlide.id, (slide) => ({ ...slide, background: image }));
-      if (next) setDeck(next);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Background generation failed.");
     } finally {
-      setAutofillBusy(false);
+      setBackgroundLoading(false);
     }
   }
 
@@ -363,9 +440,11 @@ export default function ModulesPage() {
 
   if (!deck || !activeSlide) {
     return (
-      <div className="modules__loading">
-        <span className="modules-spinner" />
-        Loading…
+      <div className="modules modules__loading">
+        <div className="modules-loading-overlay__card modules__loading-card">
+          <span className="modules-spinner modules-loading-overlay__spinner" aria-hidden />
+          <p className="modules-loading-overlay__label">Loading presentation…</p>
+        </div>
       </div>
     );
   }
@@ -529,6 +608,8 @@ export default function ModulesPage() {
                 const next = updateSimConfig(activeSlide.id, sim);
                 if (next) setDeck(next);
               }}
+              onImageLoad={handleImageLoad}
+              backgroundLoading={backgroundLoading}
             />
             <SpeakerNotesBar
               notes={activeSlide.notes ?? ""}
@@ -630,14 +711,21 @@ export default function ModulesPage() {
         open={libraryOpen}
         onClose={() => setLibraryOpen(false)}
         onSelectImage={handleAddImage}
+        onGenerateToSlide={(prompt, qualityMode) =>
+          void handleGenerateImageOnSlide(prompt, qualityMode)
+        }
+        busy={autofillBusy}
       />
 
       <DeckGeneratorModal
         open={deckGenOpen}
         busy={autofillBusy}
-        onClose={() => setDeckGenOpen(false)}
+        loading={loadingProgress}
+        onClose={() => !autofillBusy && setDeckGenOpen(false)}
         onGenerate={(prompt, count) => void handleGenerateDeck(prompt, count)}
       />
+
+      <ModulesLoadingOverlay loading={deckGenOpen ? null : loadingProgress} />
     </div>
   );
 }

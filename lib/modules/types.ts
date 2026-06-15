@@ -31,6 +31,8 @@ export interface ImageElement {
   h: number;
   z: number;
   src: string;
+  /** True while image src is being generated or fetched. */
+  loading?: boolean;
 }
 
 export type ShapeKind =

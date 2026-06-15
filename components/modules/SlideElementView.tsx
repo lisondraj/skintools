@@ -11,6 +11,7 @@ type Props = {
   scale: number;
   onPointerDown: (e: React.PointerEvent, id: string, mode: "move" | "se") => void;
   onDoubleClickText?: (id: string) => void;
+  onImageLoad?: (id: string, naturalWidth: number, naturalHeight: number) => void;
 };
 
 export function SlideElementView({
@@ -19,6 +20,7 @@ export function SlideElementView({
   scale,
   onPointerDown,
   onDoubleClickText,
+  onImageLoad,
 }: Props) {
   const style: React.CSSProperties = {
     left: element.x * scale,
@@ -81,15 +83,35 @@ export function SlideElementView({
     );
   }
 
+  const isLoading = element.loading || !element.src;
+
   return (
     <div
-      className={`modules-el modules-el--image${selected ? " is-selected" : ""}`}
+      className={`modules-el modules-el--image${selected ? " is-selected" : ""}${isLoading ? " is-loading" : ""}`}
       style={style}
       onPointerDown={(e) => onPointerDown(e, element.id, "move")}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={element.src} alt="" className="modules-el__img" draggable={false} />
-      {selected && (
+      {isLoading ? (
+        <div className="modules-el__img-loading">
+          <span className="modules-spinner" aria-hidden />
+          <span className="modules-el__img-loading-label">Adding image…</span>
+        </div>
+      ) : (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={element.src}
+          alt=""
+          className="modules-el__img"
+          draggable={false}
+          onLoad={(e) => {
+            const img = e.currentTarget;
+            if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+              onImageLoad?.(element.id, img.naturalWidth, img.naturalHeight);
+            }
+          }}
+        />
+      )}
+      {selected && !isLoading && (
         <span
           className="modules-el__handle modules-el__handle--se"
           onPointerDown={(e) => {

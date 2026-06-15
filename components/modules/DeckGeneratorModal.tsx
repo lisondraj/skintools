@@ -1,15 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import type { LoadingUpdate } from "@/lib/modules/loading-progress";
 
 type Props = {
   open: boolean;
   busy: boolean;
+  loading?: LoadingUpdate | null;
   onClose: () => void;
   onGenerate: (prompt: string, slideCount: number) => void;
 };
 
-export function DeckGeneratorModal({ open, busy, onClose, onGenerate }: Props) {
+export function DeckGeneratorModal({ open, busy, loading, onClose, onGenerate }: Props) {
   const [prompt, setPrompt] = useState("");
   const [slideCount, setSlideCount] = useState(6);
 
@@ -17,11 +19,16 @@ export function DeckGeneratorModal({ open, busy, onClose, onGenerate }: Props) {
 
   return (
     <div className="modules-modal" role="dialog" aria-modal="true" aria-label="Generate deck">
-      <div className="modules-modal__backdrop" onClick={onClose} />
+      <div className="modules-modal__backdrop" onClick={() => !busy && onClose()} />
       <div className="modules-modal__panel">
         <header className="modules-modal__header">
           <h2>Generate entire deck</h2>
-          <button type="button" className="modules-btn modules-btn--ghost" onClick={onClose}>
+          <button
+            type="button"
+            className="modules-btn modules-btn--ghost"
+            disabled={busy}
+            onClick={onClose}
+          >
             Close
           </button>
         </header>
@@ -31,6 +38,19 @@ export function DeckGeneratorModal({ open, busy, onClose, onGenerate }: Props) {
           generated clinical illustrations on image slides.
         </p>
 
+        {busy && loading && (
+          <div className="modules-modal__progress" role="status" aria-live="polite">
+            <p className="modules-modal__progress-label">{loading.label}</p>
+            <div className="modules-loading-overlay__track">
+              <span
+                className="modules-loading-overlay__fill"
+                style={{ width: `${loading.progress}%` }}
+              />
+            </div>
+            <span className="modules-modal__progress-pct">{loading.progress}%</span>
+          </div>
+        )}
+
         <label className="modules-field">
           <span className="modules-field__label">Topic</span>
           <textarea
@@ -38,6 +58,7 @@ export function DeckGeneratorModal({ open, busy, onClose, onGenerate }: Props) {
             rows={3}
             placeholder="e.g. Sun safety and skin cancer prevention for patients in Ontario"
             value={prompt}
+            disabled={busy}
             onChange={(e) => setPrompt(e.target.value)}
           />
         </label>
@@ -49,6 +70,7 @@ export function DeckGeneratorModal({ open, busy, onClose, onGenerate }: Props) {
             min={3}
             max={12}
             value={slideCount}
+            disabled={busy}
             onChange={(e) => setSlideCount(Number(e.target.value))}
           />
         </label>
@@ -62,7 +84,7 @@ export function DeckGeneratorModal({ open, busy, onClose, onGenerate }: Props) {
             setPrompt("");
           }}
         >
-          {busy ? "Generating deck & images…" : "Generate deck"}
+          {busy ? (loading?.label ?? "Generating deck…") : "Generate deck"}
         </button>
       </div>
     </div>

@@ -30,6 +30,8 @@ type Props = {
   onChangeElements: (elements: SlideElement[]) => void;
   onChangeSim?: (sim: Partial<PatientSimConfig>) => void;
   onTextSelection?: (info: { elementId: string; start: number; end: number; text: string } | null) => void;
+  onImageLoad?: (id: string, naturalWidth: number, naturalHeight: number) => void;
+  backgroundLoading?: boolean;
   readOnly?: boolean;
 };
 
@@ -40,6 +42,8 @@ export function SlideCanvas({
   onChangeElements,
   onChangeSim,
   onTextSelection,
+  onImageLoad,
+  backgroundLoading = false,
   readOnly = false,
 }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -213,7 +217,7 @@ export function SlideCanvas({
   return (
     <div className="modules-canvas-wrap" ref={wrapRef}>
       <div
-        className="modules-canvas"
+        className={`modules-canvas${backgroundLoading ? " is-bg-loading" : ""}`}
         style={{
           width: MODULES_STAGE_W * scale,
           height: MODULES_STAGE_H * scale,
@@ -231,8 +235,16 @@ export function SlideCanvas({
             scale={scale}
             onPointerDown={handlePointerDown}
             onDoubleClickText={handleDoubleClickText}
+            onImageLoad={onImageLoad}
           />
         ))}
+
+        {backgroundLoading && (
+          <div className="modules-canvas__bg-loading" aria-hidden>
+            <span className="modules-spinner" />
+            <span>Generating background…</span>
+          </div>
+        )}
 
         {slide.kind === "patient-sim" && readOnly && (
           <div className="modules-canvas__sim-badge">Virtual patient slide</div>

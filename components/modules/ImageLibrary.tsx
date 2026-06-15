@@ -14,17 +14,21 @@ type Tab = "upload" | "generate" | "remorph" | "infographic";
 
 type Props = {
   open: boolean;
+  busy?: boolean;
   onClose: () => void;
   onSelectImage: (src: string) => void;
+  onGenerateToSlide?: (prompt: string, qualityMode: "fast" | "quality") => void;
 };
 
-export function ImageLibrary({ open, onClose, onSelectImage }: Props) {
+export function ImageLibrary({ open, onClose, onSelectImage, onGenerateToSlide, busy = false }: Props) {
   const [tab, setTab] = useState<Tab>("upload");
   const [albums, setAlbums] = useState<RemorphAlbum[]>([]);
   const [infographicHistory, setInfographicHistory] = useState<InfographicHistoryEntry[]>([]);
   const [prompt, setPrompt] = useState("");
   const [qualityMode, setQualityMode] = useState<"fast" | "quality">("fast");
   const [generating, setGenerating] = useState(false);
+  const [generateProgress, setGenerateProgress] = useState(0);
+  const [generateLabel, setGenerateLabel] = useState("Generating image…");
   const [preview, setPreview] = useState("");
   const [error, setError] = useState("");
   const [infoDiagnosis, setInfoDiagnosis] = useState("");
@@ -50,20 +54,33 @@ export function ImageLibrary({ open, onClose, onSelectImage }: Props) {
   async function handleGenerateImage() {
     if (!prompt.trim()) return;
     setGenerating(true);
+    setGenerateProgress(8);
+    setGenerateLabel("Generating image…");
     setError("");
     setPreview("");
+    const progressTimer = setInterval(() => {
+      setGenerateProgress((p) => Math.min(p + 4, 90));
+    }, 500);
     try {
       const image = await generateSlideImage({
         prompt: prompt.trim(),
         purpose: tab === "generate" ? "image" : "image",
         qualityMode,
       });
+      setGenerateProgress(100);
       setPreview(image);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Generation failed.");
     } finally {
+      clearInterval(progressTimer);
       setGenerating(false);
+      setGenerateProgress(0);
     }
+  }
+
+  function handleAddGeneratedToSlide() {
+    if (!onGenerateToSlide || !prompt.trim()) return;
+    onGenerateToSlide(prompt.trim(), qualityMode);
   }
 
   async function handleGenerateInfographic() {
@@ -91,7 +108,22 @@ export function ImageLibrary({ open, onClose, onSelectImage }: Props) {
     }
   }
 
-  const busy = generating || infoGenerating;
+  const libraryBusy = generating || infoGenerating || busy;
+
+  function renderGenerateProgress() {
+    if (!generating) return null;
+    return (
+      <div className="modules-modal__progress" role="status" aria-live="polite">
+        <p className="modules-modal__progress-label">{generateLabel}</p>
+        <div className="modules-loading-overlay__track">
+          <span
+            className="modules-loading-overlay__fill"
+            style={{ width: `${generateProgress}%` }}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="modules-modal" role="dialog" aria-modal="true" aria-label="Image library">
@@ -188,11 +220,22 @@ export function ImageLibrary({ open, onClose, onSelectImage }: Props) {
             <button
               type="button"
               className="modules-btn modules-btn--primary"
-              disabled={busy || !prompt.trim()}
+              disabled={libraryBusy || !prompt.trim()}
               onClick={() => void handleGenerateImage()}
             >
-              {generating ? "Generating…" : "Generate image"}
+              {generating ? "Generating…" : "Generate preview"}
             </button>
+            {onGenerateToSlide && (
+              <button
+                type="button"
+                className="modules-btn modules-btn--secondary modules-modal__gen-btn"
+                disabled={libraryBusy || !prompt.trim()}
+                onClick={handleAddGeneratedToSlide}
+              >
+                Generate & add to slide
+              </button>
+            )}
+            {renderGenerateProgress()}
           </div>
         )}
 
@@ -214,11 +257,22 @@ export function ImageLibrary({ open, onClose, onSelectImage }: Props) {
             <button
               type="button"
               className="modules-btn modules-btn--secondary modules-modal__gen-btn"
-              disabled={busy || !prompt.trim()}
+              disabled={libraryBusy || !prompt.trim()}
               onClick={() => void handleGenerateImage()}
             >
-              {generating ? "Generating…" : "Generate with GPT Image 2"}
+              {generating ? "Generating…" : "Generate preview"}
             </button>
+            {onGenerateToSlide && (
+              <button
+                type="button"
+                className="modules-btn modules-btn--primary modules-modal__gen-btn"
+                disabled={libraryBusy || !prompt.trim()}
+                onClick={handleAddGeneratedToSlide}
+              >
+                Generate & add to slide
+              </button>
+            )}
+            {renderGenerateProgress()}
 
             <h3 className="modules-modal__subtitle">Remorph history</h3>
             {albums.length === 0 ? (
@@ -267,7 +321,7 @@ export function ImageLibrary({ open, onClose, onSelectImage }: Props) {
             <button
               type="button"
               className="modules-btn modules-btn--secondary modules-modal__gen-btn"
-              disabled={busy || !infoDiagnosis.trim()}
+              disabled={libraryBusy || !infoDiagnosis.trim()}
               onClick={() => void handleGenerateInfographic()}
             >
               {infoGenerating ? "Generating…" : "Generate infographic"}
